@@ -63,7 +63,39 @@ export interface DocumentDto {
   fileName: string;
   isGenerated: boolean;
   uploadedAt: string;
+  uploadedByName: string | null;
+  mimeType: string | null;
   url: string;
+}
+
+export interface DirectoryUser {
+  id: string;
+  fullName: string;
+  role: Role;
+  branchName: string | null;
+}
+
+export interface MessageDto {
+  id: string;
+  caseId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: Role;
+  text: string | null;
+  toRole: Role | null;
+  document: DocumentDto | null;
+  mine: boolean;
+  createdAt: string;
+}
+
+export interface StatsResponse {
+  byStatus: { status: CaseStatus; count: number }[];
+  byBranch: { branch: string; count: number }[];
+  totalCases: number;
+  totalAmount: number;
+  totalKatm: number;
+  finalizedCount: number;
+  recent: CreditCaseListItem[];
 }
 
 export interface WorkflowEventDto {

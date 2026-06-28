@@ -4,8 +4,12 @@ import type {
   BranchDto,
   CreditCaseDto,
   CreditCaseListItem,
+  DirectoryUser,
   ImportParseResult,
   LoginResponse,
+  MessageDto,
+  Role,
+  StatsResponse,
   TransitionPayload,
   UpsertRealEstateCasePayload,
 } from '@credit-core/shared';
@@ -94,7 +98,72 @@ export const api = {
     const { data } = await http.get(`/output/${id}/excel`, { responseType: 'blob' });
     return data as Blob;
   },
+
+  // ── Documents (authenticated download/view — fixes 401 from <a href>) ──
+  async downloadDocument(id: string): Promise<Blob> {
+    const { data } = await http.get(`/documents/${id}/download`, { responseType: 'blob' });
+    return data as Blob;
+  },
+
+  // ── Analytics / monitoring ──
+  async stats(): Promise<StatsResponse> {
+    const { data } = await http.get<StatsResponse>('/stats');
+    return data;
+  },
+
+  // ── Admin: branches & users ──
+  async createBranch(payload: { name: string; symbol: string; region?: string }): Promise<BranchDto> {
+    const { data } = await http.post<BranchDto>('/branches', payload);
+    return data;
+  },
+  async users(): Promise<any[]> {
+    const { data } = await http.get('/users');
+    return data as any[];
+  },
+  async createUser(payload: { fullName: string; login: string; password: string; role: Role; branchId?: string }) {
+    const { data } = await http.post('/users', payload);
+    return data;
+  },
+
+  // ── Chat / messages ──
+  async messages(caseId: string): Promise<MessageDto[]> {
+    const { data } = await http.get<MessageDto[]>(`/cases/${caseId}/messages`);
+    return data;
+  },
+  async sendMessage(caseId: string, payload: { text?: string; toRole?: Role; file?: File }) {
+    const fd = new FormData();
+    if (payload.text) fd.append('text', payload.text);
+    if (payload.toRole) fd.append('toRole', payload.toRole);
+    if (payload.file) fd.append('file', payload.file);
+    await http.post(`/cases/${caseId}/messages`, fd);
+  },
+  async unreadCount(): Promise<number> {
+    const { data } = await http.get<{ count: number }>('/messages/unread');
+    return data.count;
+  },
+  async directory(role?: Role, q?: string): Promise<DirectoryUser[]> {
+    const { data } = await http.get<DirectoryUser[]>('/directory', { params: { role, q } });
+    return data;
+  },
 };
+
+/** Fetch an authenticated document and open it in a new tab (view). */
+export async function viewDocument(id: string, fileName: string) {
+  const blob = await api.downloadDocument(id);
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
+  if (!w) downloadBlobNamed(blob, fileName);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function downloadBlobNamed(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);

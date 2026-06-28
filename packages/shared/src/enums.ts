@@ -51,6 +51,7 @@ export const DocumentType = {
   TECH_PASSPORT: 'TECH_PASSPORT', // tex passport
   DIRECTOR_FINAL: 'DIRECTOR_FINAL', // 1–2 final docs the director uploads
   GENERATED_PDF: 'GENERATED_PDF', // PDF produced by the system
+  CHAT: 'CHAT', // file shared inside case chat
   OTHER: 'OTHER',
 } as const;
 export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];

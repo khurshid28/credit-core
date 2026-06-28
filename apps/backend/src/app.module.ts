@@ -10,6 +10,8 @@ import { DocumentsModule } from './documents/documents.module';
 import { ImportModule } from './import/import.module';
 import { OutputModule } from './output/output.module';
 import { KatmModule } from './katm/katm.module';
+import { StatsModule } from './stats/stats.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { KatmModule } from './katm/katm.module';
     ImportModule,
     OutputModule,
     KatmModule,
+    StatsModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

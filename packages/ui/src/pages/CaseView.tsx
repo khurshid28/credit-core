@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2, Download, FileDown, FileText, Pencil, RotateCcw, Send, Flag, Upload,
 } from 'lucide-react';
-import { api, downloadBlob } from '@credit-core/api-client';
+import { api, downloadBlob, viewDocument } from '@credit-core/api-client';
+import { CaseChat } from '../components/CaseChat';
+import { Eye } from 'lucide-react';
 import {
   CaseStatus, DocumentType, DOCUMENT_LABEL, PRODUCT_LABEL, Role,
   TRANSITIONS, WorkflowDecision, type CreditCaseDto,
@@ -87,15 +89,25 @@ export function CaseView() {
             {c.documents.length === 0 && <p className="text-sm text-slate-400">Hujjatlar yo‘q</p>}
             <ul className="space-y-2">
               {c.documents.map((d) => (
-                <li key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2">
-                  <span className="flex items-center gap-2 text-sm">
-                    <FileText className="h-4 w-4 text-slate-400" />
-                    <span className="font-medium">{DOCUMENT_LABEL[d.type]}</span>
-                    <span className="text-slate-400">{d.fileName}</span>
-                  </span>
-                  <a href={api.documentUrl(d.id)} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
-                    <Download className="h-4 w-4" />
-                  </a>
+                <li key={d.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-2.5 text-sm">
+                    <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{DOCUMENT_LABEL[d.type]} <span className="font-normal text-slate-400">· {d.fileName}</span></p>
+                      <p className="text-xs text-slate-400">
+                        {new Date(d.uploadedAt).toLocaleString('ru-RU')}
+                        {d.uploadedByName ? ` · ${d.uploadedByName}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => viewDocument(d.id, d.fileName)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="Ko‘rish">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button onClick={async () => downloadBlob(await api.downloadDocument(d.id), d.fileName)} className="rounded-lg p-1.5 text-brand-600 hover:bg-brand-50" title="Yuklab olish">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -149,9 +161,14 @@ export function CaseView() {
           )}
 
           {isAdminFinalize && <AdminPanel c={c} onChange={refresh} katm={katm} setKatm={setKatm} />}
-          {role === Role.ADMIN && <KatmPlaceholder />}
+          {role === Role.ADMIN && <KatmInputs />}
         </div>
       </div>
+
+      <Card>
+        <h2 className="mb-3 font-semibold">Muloqot (chat)</h2>
+        <CaseChat caseId={c.id} />
+      </Card>
     </div>
   );
 }
@@ -218,21 +235,27 @@ function AdminPanel({
   );
 }
 
-function KatmPlaceholder() {
+function KatmInputs() {
+  // KATM integratsiyasi tayyor emas — qiymatlarni qo'lda kiritish inputlari.
+  const [history, setHistory] = useState('');
+  const [score, setScore] = useState('');
+  const [pledge, setPledge] = useState('');
   return (
-    <Card className="space-y-2 border-dashed">
+    <Card className="space-y-3 border-dashed">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">KATM hisobotlari</h2>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Tez kunda</span>
+        <span className="rounded-full bg-warning-100 px-2 py-0.5 text-xs font-medium text-warning-700">Qo‘lda · tez kunda avto</span>
       </div>
-      <p className="text-sm text-slate-500">
-        Har ariza yoki alohida shaxs (PINFL) bo‘yicha 2–3 KATM hisobotini tekshirish shu yerda bo‘ladi.
-      </p>
-      <div className="space-y-2 opacity-50">
-        <Button variant="secondary" className="w-full" disabled>Kredit tarixi</Button>
-        <Button variant="secondary" className="w-full" disabled>Skoring</Button>
-        <Button variant="secondary" className="w-full" disabled>Garov reestri</Button>
-      </div>
+      <p className="text-xs text-slate-500">PINFL bo‘yicha 2–3 hisobot qiymatini kiriting (integratsiya tayyor bo‘lguncha).</p>
+      <Field label="Kredit tarixi">
+        <Input value={history} onChange={(e) => setHistory(e.target.value)} placeholder="masalan: yaxshi / muddati o‘tgan yo‘q" />
+      </Field>
+      <Field label="Skoring bali">
+        <Input type="number" value={score} onChange={(e) => setScore(e.target.value)} placeholder="0–1000" />
+      </Field>
+      <Field label="Garov reestri holati">
+        <Input value={pledge} onChange={(e) => setPledge(e.target.value)} placeholder="band emas / band" />
+      </Field>
     </Card>
   );
 }

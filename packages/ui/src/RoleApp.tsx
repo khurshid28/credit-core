@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
-import { FilePlus2, LayoutGrid, Settings } from 'lucide-react';
+import { BarChart3, FilePlus2, LayoutGrid, Settings } from 'lucide-react';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Splash } from './components/Splash';
@@ -22,12 +22,14 @@ import { Dashboard } from './pages/Dashboard';
 import { CaseForm } from './pages/CaseForm';
 import { CaseView } from './pages/CaseView';
 import { AdminPage } from './pages/AdminPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 function navFor(role: Role): NavItem[] {
   const base: NavItem[] = [{ to: '/', label: 'Ishlar', icon: LayoutGrid }];
   if (role === Role.OPERATOR) base.push({ to: '/cases/new', label: 'Yangi ish', icon: FilePlus2 });
+  base.push({ to: '/analytics', label: 'Monitoring', icon: BarChart3 });
   if (role === Role.ADMIN) base.push({ to: '/admin', label: 'Boshqaruv', icon: Settings });
   return base;
 }
@@ -54,6 +56,7 @@ function Shell({ role, title }: { role: Role; title: string }) {
         {role === Role.OPERATOR && <Route path="/cases/new" element={<CaseForm />} />}
         {role === Role.OPERATOR && <Route path="/cases/:id/edit" element={<CaseForm />} />}
         <Route path="/cases/:id" element={<CaseView />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         {role === Role.ADMIN && <Route path="/admin" element={<AdminPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

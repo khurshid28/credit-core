@@ -42,6 +42,7 @@ enum DocumentType {
   TECH_PASSPORT
   DIRECTOR_FINAL
   GENERATED_PDF
+  CHAT
   OTHER
 }
 
@@ -68,6 +69,7 @@ model User {
   createdCases CreditCase[] @relation("CaseCreatedBy")
   documents    Document[]
   events       WorkflowEvent[]
+  sentMessages Message[] @relation("MessageSender")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -95,6 +97,7 @@ model CreditCase {
   documents    Document[]
   events       WorkflowEvent[]
   importJobs   ImportJob[]
+  messages     Message[]
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -186,7 +189,24 @@ model Document {
   isGenerated Boolean      @default(false)
   uploadedBy  User?        @relation(fields: [uploadedById], references: [id])
   uploadedById String?
+  message     Message?
   createdAt   DateTime     @default(now())
+
+  @@index([caseId])
+}
+
+model Message {
+  id         String     @id @default(cuid())
+  case       CreditCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId     String
+  sender     User       @relation("MessageSender", fields: [senderId], references: [id])
+  senderId   String
+  text       String?    @db.Text
+  toRole     Role?
+  document   Document?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  documentId String?    @unique
+  readBy     String?    @db.Text // comma-separated userIds who have read it
+  createdAt  DateTime   @default(now())
 
   @@index([caseId])
 }

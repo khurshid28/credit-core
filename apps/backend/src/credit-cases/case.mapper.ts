@@ -6,7 +6,7 @@ export const caseInclude = {
   createdBy: true,
   borrower: true,
   realEstate: { include: { owners: true } },
-  documents: { orderBy: { createdAt: 'asc' } },
+  documents: { include: { uploadedBy: true }, orderBy: { createdAt: 'asc' } },
   events: { include: { actor: true }, orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.CreditCaseInclude;
 
@@ -70,6 +70,8 @@ export function toCaseDto(c: CaseWithRelations): CreditCaseDto {
       fileName: d.fileName,
       isGenerated: d.isGenerated,
       uploadedAt: d.createdAt.toISOString(),
+      uploadedByName: d.uploadedBy?.fullName ?? null,
+      mimeType: d.mimeType,
       url: `/api/documents/${d.id}/download`,
     })),
     events: c.events.map((e) => ({

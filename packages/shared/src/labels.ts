@@ -29,5 +29,6 @@ export const DOCUMENT_LABEL: Record<DocumentType, string> = {
   [DocumentType.TECH_PASSPORT]: 'Texnik pasport',
   [DocumentType.DIRECTOR_FINAL]: 'Yakuniy hujjat (direktor)',
   [DocumentType.GENERATED_PDF]: 'Generatsiya qilingan PDF',
+  [DocumentType.CHAT]: 'Chat fayli',
   [DocumentType.OTHER]: 'Boshqa',
 };
