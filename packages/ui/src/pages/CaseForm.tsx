@@ -183,15 +183,15 @@ export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImpor
             ) : (
               <ul className="space-y-2">
                 {docs.map((d) => (
-                  <li key={d.localId} className="flex items-center gap-2 rounded-xl border border-hairline px-3 py-2 dark:border-white/10">
-                    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white', d.type === DocumentType.PASSPORT ? 'bg-brand-700' : 'bg-slate-400')}>
-                      {d.type === DocumentType.PASSPORT ? <IdCard className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <Input value={d.title} onChange={(e) => setDocTitle(d.localId, e.target.value)} placeholder={DOCUMENT_LABEL[d.type] + ' nomi'} />
-                      <p className="mt-0.5 truncate text-[11px] text-muted">{DOCUMENT_LABEL[d.type]} · {d.file.name}</p>
+                  <li key={d.localId} className="rounded-xl border border-hairline px-3 py-2.5 dark:border-white/10">
+                    <div className="flex items-center gap-2">
+                      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white', d.type === DocumentType.PASSPORT ? 'bg-brand-700' : 'bg-slate-400')}>
+                        {d.type === DocumentType.PASSPORT ? <IdCard className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      </span>
+                      <Input className="flex-1" value={d.title} onChange={(e) => setDocTitle(d.localId, e.target.value)} placeholder={DOCUMENT_LABEL[d.type] + ' nomi'} />
+                      <Button variant="ghost" className="shrink-0 px-2 text-danger-600" onClick={() => removeDoc(d.localId)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
-                    <Button variant="ghost" className="px-2 text-danger-600" onClick={() => removeDoc(d.localId)}><Trash2 className="h-4 w-4" /></Button>
+                    <p className="mt-1 truncate pl-11 text-[11px] text-muted">{DOCUMENT_LABEL[d.type]} · {d.file.name}</p>
                   </li>
                 ))}
               </ul>
