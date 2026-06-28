@@ -21,6 +21,29 @@ export const apiBaseUrl: string =
   (import.meta as unknown as { env: Record<string, string> }).env?.VITE_API_URL ??
   'http://localhost:3000';
 
+/**
+ * Maps any thrown request error to a user-facing message.
+ * Distinguishes a dead/unreachable server (no HTTP response) from real HTTP
+ * errors, so callers never show "wrong password" when the backend is simply down.
+ */
+export function getErrorMessage(err: unknown, opts?: { unauthorized?: string }): string {
+  if (axios.isAxiosError(err)) {
+    // No response object → network failure (server down, CORS, offline, timeout).
+    if (!err.response) {
+      if (err.code === 'ECONNABORTED') return 'Server javob bermadi (timeout). Birozdan keyin urinib ko‘ring.';
+      return 'Serverga ulanib bo‘lmadi. Server ishlamayapti yoki internet aloqasi yo‘q.';
+    }
+    const status = err.response.status;
+    if (status === 401) return opts?.unauthorized ?? 'Avtorizatsiya muddati tugadi. Qaytadan kiring.';
+    if (status === 403) return 'Ruxsat yo‘q.';
+    const serverMsg = (err.response.data as { message?: string | string[] })?.message;
+    if (serverMsg) return Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+    if (status >= 500) return 'Serverda xatolik yuz berdi. Birozdan keyin urinib ko‘ring.';
+    return 'So‘rovni bajarib bo‘lmadi.';
+  }
+  return (err as Error)?.message || 'Noma’lum xatolik yuz berdi.';
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, LogIn } from '../lib/icons';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
+import { getErrorMessage } from '@credit-core/api-client';
 import { useAuth } from '../lib/auth';
 import { Button, Input, Field, PasswordInput } from './primitives';
 
@@ -21,8 +22,8 @@ export function LoginPage({ role, title }: { role: Role; title: string }) {
       if (user.role !== role) {
         setError(`Bu portal faqat "${ROLE_LABEL[role]}" uchun. Sizning rolingiz: ${ROLE_LABEL[user.role]}`);
       }
-    } catch {
-      setError('Login yoki parol noto‘g‘ri');
+    } catch (err) {
+      setError(getErrorMessage(err, { unauthorized: 'Login yoki parol noto‘g‘ri' }));
     } finally {
       setLoading(false);
     }
