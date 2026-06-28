@@ -38,6 +38,7 @@ enum WorkflowDecision {
 enum DocumentType {
   NOTARY
   SCAN
+  PASSPORT
   COLLATERAL_PHOTO
   TECH_PASSPORT
   DIRECTOR_FINAL

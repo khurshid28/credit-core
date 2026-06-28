@@ -25,6 +25,7 @@ export const PRODUCT_LABEL: Record<ProductType, string> = {
 export const DOCUMENT_LABEL: Record<DocumentType, string> = {
   [DocumentType.NOTARY]: 'Notarial hujjat',
   [DocumentType.SCAN]: 'Skan',
+  [DocumentType.PASSPORT]: 'Pasport',
   [DocumentType.COLLATERAL_PHOTO]: 'Garov rasmi',
   [DocumentType.TECH_PASSPORT]: 'Texnik pasport',
   [DocumentType.DIRECTOR_FINAL]: 'Yakuniy hujjat (direktor)',

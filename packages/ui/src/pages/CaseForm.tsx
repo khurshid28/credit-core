@@ -3,10 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FileSpreadsheet, Plus, Save, Trash2, House, Car, UserAdd, User, IdCard, Hashtag, Phone, Location,
-  Money, Clock, People, Percent, Ruler, Tag, Calendar, Palette,
+  Money, Clock, People, Percent, Ruler, Tag, Calendar, Palette, Upload, FileText,
 } from '../lib/icons';
 import { api } from '@credit-core/api-client';
-import { ProductType, type CollateralDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
+import { ProductType, DocumentType, DOCUMENT_LABEL, type CollateralDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
 import { Button, Card, Field, Input } from '../components/primitives';
 import { MoneyInput, DatePicker, PhoneInput, PassportInput, PlateInput, Select, digitsOnly } from '../components/forms';
 import { CAR_MODELS } from '../lib/cars';
@@ -15,6 +15,10 @@ import { useToast } from '../components/Toast';
 import { cn, formatMoney } from '../lib/cn';
 
 const num = (v: string): number | null => (v === '' ? null : Number(v));
+
+// A document staged in the form before the case exists; uploaded right after save.
+export type StagedDoc = { localId: string; file: File; type: DocumentType; title: string };
+let docSeq = 0;
 
 const emptyBorrower = { fullName: '', passportSeries: null, passportNumber: null, pinfl: null, birthDate: null, address: null, phone: null };
 
@@ -37,6 +41,20 @@ export function useCaseForm(id?: string) {
   const [form, setForm] = useState<UpsertCasePayload>(emptyForm);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [docs, setDocs] = useState<StagedDoc[]>([]);
+
+  const addDocs = (files: FileList | File[] | null, type: DocumentType) => {
+    if (!files) return;
+    const list = Array.from(files).map((file) => ({
+      localId: `d${docSeq++}`,
+      file,
+      type,
+      title: type === DocumentType.PASSPORT ? 'Pasport' : '',
+    }));
+    setDocs((prev) => [...prev, ...list]);
+  };
+  const removeDoc = (localId: string) => setDocs((prev) => prev.filter((d) => d.localId !== localId));
+  const setDocTitle = (localId: string, title: string) => setDocs((prev) => prev.map((d) => (d.localId === localId ? { ...d, title } : d)));
 
   useQuery({
     queryKey: ['case', id],
@@ -82,23 +100,31 @@ export function useCaseForm(id?: string) {
     setSaving(true);
     try {
       const saved = editing ? await api.updateCase(id!, form) : await api.createCase(form);
+      // Upload any documents staged in the form (borrower passport + extras).
+      for (const d of docs) {
+        await api.uploadDocument(saved.id, d.type, d.file, { title: d.title || undefined });
+      }
+      if (docs.length) setDocs([]);
       qc.invalidateQueries({ queryKey: ['cases'] });
       qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['case', saved.id] });
       return saved;
     } finally {
       setSaving(false);
     }
   };
 
-  return { editing, form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, valid, saving, save };
+  return { editing, form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, valid, saving, save, docs, addDocs, removeDoc, setDocTitle };
 }
 
 type FormApi = ReturnType<typeof useCaseForm>;
 
 /** Presentational form body (no page chrome) — reused in page and modal. */
 export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImport?: boolean }) {
-  const { form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings } = f;
+  const { form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, docs, addDocs, removeDoc, setDocTitle } = f;
   const fileRef = useRef<HTMLInputElement>(null);
+  const passportRef = useRef<HTMLInputElement>(null);
+  const extraRef = useRef<HTMLInputElement>(null);
   const totalCollateral = form.collaterals.reduce((s, c) => s + (c.agreedValue ?? 0), 0);
 
   return (
@@ -139,6 +165,37 @@ export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImpor
             <Field label="Pasport raqami" icon={IdCard}><Input inputMode="numeric" maxLength={7} value={form.borrower.passportNumber ?? ''} onChange={(e) => setB({ passportNumber: digitsOnly(e.target.value, 7) })} placeholder="1234567" /></Field>
             <Field label="Telefon" icon={Phone}><PhoneInput value={form.borrower.phone ?? null} onChange={(v) => setB({ phone: v })} /></Field>
             <Field label="Manzil" icon={Location}><Input value={form.borrower.address ?? ''} onChange={(e) => setB({ address: e.target.value })} /></Field>
+          </div>
+
+          {/* Borrower passport + extra documents (uploaded right after the case is saved) */}
+          <div className="space-y-2 border-t border-hairline pt-4 dark:border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold"><IdCard className="h-4 w-4 text-slate-400" /> Hujjatlar</h3>
+              <div className="flex gap-2">
+                <input ref={passportRef} type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => { addDocs(e.target.files, DocumentType.PASSPORT); e.target.value = ''; }} />
+                <input ref={extraRef} type="file" multiple className="hidden" onChange={(e) => { addDocs(e.target.files, DocumentType.OTHER); e.target.value = ''; }} />
+                <Button variant="secondary" onClick={() => passportRef.current?.click()}><IdCard className="h-4 w-4" /> Pasport</Button>
+                <Button variant="secondary" onClick={() => extraRef.current?.click()}><Upload className="h-4 w-4" /> Qo'shimcha</Button>
+              </div>
+            </div>
+            {docs.length === 0 ? (
+              <p className="text-xs text-muted">Qarz oluvchi pasporti va qo'shimcha hujjatlarni biriktiring (ixtiyoriy).</p>
+            ) : (
+              <ul className="space-y-2">
+                {docs.map((d) => (
+                  <li key={d.localId} className="flex items-center gap-2 rounded-xl border border-hairline px-3 py-2 dark:border-white/10">
+                    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white', d.type === DocumentType.PASSPORT ? 'bg-brand-700' : 'bg-slate-400')}>
+                      {d.type === DocumentType.PASSPORT ? <IdCard className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <Input value={d.title} onChange={(e) => setDocTitle(d.localId, e.target.value)} placeholder={DOCUMENT_LABEL[d.type] + ' nomi'} />
+                      <p className="mt-0.5 truncate text-[11px] text-muted">{DOCUMENT_LABEL[d.type]} · {d.file.name}</p>
+                    </div>
+                    <Button variant="ghost" className="px-2 text-danger-600" onClick={() => removeDoc(d.localId)}><Trash2 className="h-4 w-4" /></Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Card>
       </div>

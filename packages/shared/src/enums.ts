@@ -47,6 +47,7 @@ export type WorkflowDecision = (typeof WorkflowDecision)[keyof typeof WorkflowDe
 export const DocumentType = {
   NOTARY: 'NOTARY', // notarius (×3)
   SCAN: 'SCAN', // scanner upload
+  PASSPORT: 'PASSPORT', // qarz oluvchi pasporti
   COLLATERAL_PHOTO: 'COLLATERAL_PHOTO', // zalog rasm
   TECH_PASSPORT: 'TECH_PASSPORT', // tex passport
   DIRECTOR_FINAL: 'DIRECTOR_FINAL', // 1–2 final docs the director uploads
