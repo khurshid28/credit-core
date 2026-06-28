@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, LogOut, Menu, ShieldCheck, X, Sun, Moon, Globe } from '../lib/icons';
+import { Bell, LogOut, Menu, ShieldCheck, X } from '../lib/icons';
 import { api } from '@credit-core/api-client';
 import { ROLE_LABEL } from '@credit-core/shared';
 import { useAuth } from '../lib/auth';
-import { useTheme } from '../lib/theme';
-import { useI18n } from '../lib/i18n';
 import { cn } from '../lib/cn';
 import { ConfirmDialog } from './Modal';
+import { LangSwitch, ThemeSwitch } from './Switches';
 
 export interface NavItem {
   to: string;
@@ -19,8 +18,6 @@ export interface NavItem {
 
 export function AppShell({ title, nav, children }: { title: string; nav: NavItem[]; children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const { theme, toggle } = useTheme();
-  const { lang, setLang } = useI18n();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -102,12 +99,8 @@ export function AppShell({ title, nav, children }: { title: string; nav: NavItem
           <button className="text-slate-600 dark:text-slate-300 md:hidden" onClick={() => setOpen(true)} aria-label="Menyu"><Menu className="h-5 w-5" /></button>
           <h2 className="text-sm font-semibold text-ink dark:text-slate-100">{current?.label ?? title}</h2>
           <div className="ml-auto flex items-center gap-2.5">
-            <button onClick={() => setLang(lang === 'uz' ? 'ru' : 'uz')} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10" aria-label="Til">
-              <Globe className="h-4 w-4" /> {lang.toUpperCase()}
-            </button>
-            <button onClick={toggle} className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10" aria-label="Mavzu">
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
+            <LangSwitch />
+            <ThemeSwitch />
             <Link to="/notifications" className="relative text-slate-500 hover:text-ink dark:text-slate-300 dark:hover:text-white">
               <Bell className="h-5 w-5" />
               {!!unread && unread > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-semibold text-white">{unread > 99 ? '99+' : unread}</span>}

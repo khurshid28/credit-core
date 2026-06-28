@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '../lib/cn';
+import { Eye, EyeOff } from '../lib/icons';
 import { CaseStatus, STATUS_LABEL } from '@credit-core/shared';
 
 export function Button({
@@ -48,6 +49,24 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
       )}
       {...props}
     />
+  );
+}
+
+export function PasswordInput({ className, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input type={show ? 'text' : 'password'} className={cn('pr-10', className)} {...props} />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? 'Parolni yashirish' : 'Parolni ko‘rsatish'}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 transition hover:text-ink dark:hover:text-slate-100"
+      >
+        {show ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+      </button>
+    </div>
   );
 }
 

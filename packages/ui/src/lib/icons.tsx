@@ -27,6 +27,7 @@ export const FileText = make(Iso.DocumentText);
 export const Download = make(Iso.DocumentDownload);
 export const Upload = make(Iso.DocumentUpload);
 export const Eye = make(Iso.Eye);
+export const EyeOff = make(Iso.EyeSlash);
 export const Send = make(Iso.Send2);
 export const Paperclip = make(Iso.Paperclip);
 export const Search = make(Iso.SearchNormal1);

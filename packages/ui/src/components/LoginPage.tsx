@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, LogIn } from '../lib/icons';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { useAuth } from '../lib/auth';
-import { Button, Input, Field } from './primitives';
+import { Button, Input, Field, PasswordInput } from './primitives';
 
 export function LoginPage({ role, title }: { role: Role; title: string }) {
   const { login } = useAuth();
@@ -49,7 +49,7 @@ export function LoginPage({ role, title }: { role: Role; title: string }) {
             <Input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="login" autoFocus />
           </Field>
           <Field label="Parol">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
           </Field>
           {error && (
             <p role="alert" className="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700">
