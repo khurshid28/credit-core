@@ -64,6 +64,15 @@ export const Warning = make(Iso.Warning2 ?? Iso.Danger);
 export const Lock = make(Iso.Lock1 ?? Iso.Lock);
 export const Phone = make(Iso.Call);
 export const Copy = make(Iso.Copy);
+export const IdCard = make(Iso.Personalcard ?? Iso.Card);
+export const Location = make(Iso.Location ?? Iso.Map1);
+export const Hashtag = make(Iso.Hashtag);
+export const Ruler = make(Iso.Ruler ?? Iso.Maximize3);
+export const Percent = make(Iso.PercentageSquare ?? Iso.Chart);
+export const Clock = make(Iso.Clock);
+export const Tag = make(Iso.Tag);
+export const People = make(Iso.People ?? Iso.User);
+export const Palette = make(Iso.Colorfilter ?? Iso.Brush);
 
 // Aliases matching prior (lucide) names so call sites need no JSX changes.
 export const CheckCircle2 = Check;

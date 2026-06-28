@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search, ArrowRight } from '../lib/icons';
 import { cn } from '../lib/cn';
+import { surface } from '../lib/surfaces';
 
 export interface Column<T> {
   key: string;
@@ -43,7 +44,7 @@ export function DataTable<T extends { id?: string }>({
   const alignCls = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card dark:border-white/10 dark:bg-navy-800">
+    <div className={cn('overflow-hidden', surface)}>
       {searchable && (
         <div className="flex items-center gap-2 border-b border-hairline px-4 py-3 dark:border-white/10">
           <Search className="h-4 w-4 text-slate-400" />

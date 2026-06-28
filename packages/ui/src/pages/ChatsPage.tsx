@@ -33,7 +33,7 @@ export function ChatsPage() {
               const on = (selected?.id ?? '') === c.id;
               return (
                 <button key={c.id} onClick={() => setActive(c.id)}
-                  className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition', on ? 'bg-brand-50' : 'hover:bg-slate-50')}>
+                  className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition', on ? 'bg-brand-50 dark:bg-brand-600/15' : 'hover:bg-slate-50 dark:hover:bg-white/5')}>
                   <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${c.productType === ProductType.AUTO ? 'bg-warning-600' : 'bg-brand-700'}`}>
                     {c.productType === ProductType.AUTO ? <Car className="h-4 w-4" /> : <House className="h-4 w-4" />}
                   </span>

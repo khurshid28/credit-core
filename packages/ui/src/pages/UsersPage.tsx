@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserAdd, Plus, Eye, EyeOff, Copy as CopyIcon, User as UserIcon, Pencil, Lock, Check } from '../lib/icons';
+import { UserAdd, Plus, Eye, EyeOff, Copy as CopyIcon, User as UserIcon, Pencil, Lock, Check, Hashtag, ShieldCheck, Building } from '../lib/icons';
 import { api, userAvatarUrl } from '@credit-core/api-client';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { Button, Field, Input, PasswordInput } from '../components/primitives';
@@ -163,20 +163,20 @@ export function UsersPage() {
               {avatar && <button className="ml-2 text-xs text-muted hover:text-danger-600" onClick={() => setAvatar(null)}>olib tashlash</button>}
             </div>
           </div>
-          <Field label="F.I.O" required><Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} autoFocus /></Field>
+          <Field label="F.I.O" required icon={UserIcon}><Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} autoFocus /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Login" required hint={isEdit ? 'login o‘zgartirilmaydi' : undefined}>
+            <Field label="Login" required icon={Hashtag} hint={isEdit ? 'login o‘zgartirilmaydi' : undefined}>
               <Input value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} disabled={isEdit} />
             </Field>
-            <Field label={isEdit ? 'Yangi parol' : 'Parol'} required={!isEdit} hint={isEdit ? 'bo‘sh qoldirsangiz — o‘zgarmaydi' : 'kamida 4 belgi'}>
+            <Field label={isEdit ? 'Yangi parol' : 'Parol'} required={!isEdit} icon={Lock} hint={isEdit ? 'bo‘sh qoldirsangiz — o‘zgarmaydi' : 'kamida 4 belgi'}>
               <PasswordInput value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={isEdit ? '••••••' : ''} />
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Rol">
+            <Field label="Rol" icon={ShieldCheck}>
               <Select value={form.role} onChange={(v) => setForm({ ...form, role: v })} options={ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} />
             </Field>
-            <Field label="Filial">
+            <Field label="Filial" icon={Building}>
               <Select<string> value={form.branchId} onChange={(v) => setForm({ ...form, branchId: v })} placeholder="— markaziy —"
                 options={[{ value: '', label: '— markaziy —' }, ...(branches ?? []).map((br) => ({ value: br.id, label: br.name }))]} />
             </Field>

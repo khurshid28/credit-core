@@ -5,6 +5,7 @@ import { Banknote, FileCheck2, Landmark, Layers, House, Car, Chart, Money } from
 import { api } from '@credit-core/api-client';
 import { CaseStatus, ProductType, PRODUCT_LABEL, STATUS_LABEL } from '@credit-core/shared';
 import { Card, Skeleton, StatusBadge } from '../components/primitives';
+import { MetricCard, WidgetCard } from '../components/widgets';
 import { useTheme } from '../lib/theme';
 import { formatMoney } from '../lib/cn';
 
@@ -20,23 +21,6 @@ const hexFor: Record<CaseStatus, string> = {
   [CaseStatus.FINALIZED]: '#059669',
   [CaseStatus.REJECTED]: '#dc2626',
 };
-
-function StatCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: string }) {
-  return (
-    <Card className="relative overflow-hidden">
-      <div className={`absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-10 ${tone}`} />
-      <div className="flex items-center gap-4">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${tone}`}>
-          <Icon className="h-6 w-6 text-white" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
-          <p className="nums truncate text-xl font-bold text-ink dark:text-slate-100">{value}</p>
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 function ChartTip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
@@ -57,7 +41,7 @@ export function AnalyticsPage() {
   if (isLoading || !data) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[132px] rounded-2xl" />)}</div>
         <div className="grid gap-6 lg:grid-cols-2">{[0, 1].map((i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}</div>
       </div>
     );
@@ -74,21 +58,20 @@ export function AnalyticsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Layers} label="Jami ishlar" value={String(data.totalCases)} tone="bg-brand-600" />
-        <StatCard icon={FileCheck2} label="Yakunlangan" value={String(data.finalizedCount)} tone="bg-success-600" />
-        <StatCard icon={Banknote} label="Jami summa" value={formatMoney(data.totalAmount)} tone="bg-navy-800" />
-        <StatCard icon={Landmark} label="Jami KATM" value={formatMoney(data.totalKatm)} tone="bg-warning-600" />
+        <MetricCard icon={Layers} label="Jami ishlar" value={String(data.totalCases)} tone="brand" />
+        <MetricCard icon={FileCheck2} label="Yakunlangan" value={String(data.finalizedCount)} tone="success" />
+        <MetricCard icon={Banknote} label="Jami summa" value={formatMoney(data.totalAmount)} tone="warning" />
+        <MetricCard icon={Landmark} label="Jami KATM" value={formatMoney(data.totalKatm)} tone="danger" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Chart} label="Jarayonda" value={String(data.activeCount)} tone="bg-violet-600" />
-        <StatCard icon={Money} label="O‘rtacha summa" value={formatMoney(data.avgAmount)} tone="bg-brand-700" />
-        <StatCard icon={FileCheck2} label="Tasdiqlash ulushi" value={`${Math.round(data.approvalRate * 100)}%`} tone="bg-success-600" />
-        <StatCard icon={Landmark} label="Jami garov qiymati" value={formatMoney(data.totalCollateralValue)} tone="bg-navy-800" />
+        <MetricCard icon={Chart} label="Jarayonda" value={String(data.activeCount)} tone="brand" />
+        <MetricCard icon={Money} label="O‘rtacha summa" value={formatMoney(data.avgAmount)} tone="warning" />
+        <MetricCard icon={FileCheck2} label="Tasdiqlash ulushi" value={`${Math.round(data.approvalRate * 100)}%`} tone="success" />
+        <MetricCard icon={Landmark} label="Jami garov qiymati" value={formatMoney(data.totalCollateralValue)} tone="danger" />
       </div>
 
-      <Card>
-        <h2 className="mb-4 font-semibold">Oylik dinamika (6 oy)</h2>
+      <WidgetCard title="Oylik dinamika (6 oy)">
         <div className="h-60">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data.byMonth.map((m) => ({ name: monthLabel(m.month), count: m.count, amount: m.amount }))} margin={{ left: -18, top: 6 }}>
@@ -106,11 +89,10 @@ export function AnalyticsPage() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </WidgetCard>
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <h2 className="mb-4 font-semibold">Holat bo‘yicha taqsimot</h2>
+        <WidgetCard title="Holat bo‘yicha taqsimot" className="lg:col-span-3">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusData} margin={{ left: -18, top: 6 }}>
@@ -130,10 +112,9 @@ export function AnalyticsPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </WidgetCard>
 
-        <Card className="lg:col-span-2">
-          <h2 className="mb-4 font-semibold">Holatlar ulushi</h2>
+        <WidgetCard title="Holatlar ulushi" className="lg:col-span-2">
           {data.totalCases ? (
             <div className="relative h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -161,11 +142,10 @@ export function AnalyticsPage() {
               </div>
             ))}
           </div>
-        </Card>
+        </WidgetCard>
       </div>
 
-      <Card>
-        <h2 className="mb-4 font-semibold">Filial bo‘yicha hajm</h2>
+      <WidgetCard title="Filial bo‘yicha hajm">
         {data.byBranch.length ? (
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -187,10 +167,9 @@ export function AnalyticsPage() {
         ) : (
           <p className="text-sm text-slate-400">Ma'lumot yo‘q</p>
         )}
-      </Card>
+      </WidgetCard>
 
-      <Card>
-        <h2 className="mb-4 font-semibold">Mahsulot bo‘yicha</h2>
+      <WidgetCard title="Mahsulot bo‘yicha">
         <div className="space-y-3">
           {data.byProduct.map((p) => {
             const pct = data.totalCases ? Math.round((p.count / data.totalCases) * 100) : 0;
@@ -210,7 +189,7 @@ export function AnalyticsPage() {
             );
           })}
         </div>
-      </Card>
+      </WidgetCard>
 
       <Card className="overflow-hidden p-0">
         <h2 className="border-b border-hairline p-5 font-semibold dark:border-white/10">So‘nggi arizalar</h2>

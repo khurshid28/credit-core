@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileSpreadsheet, Plus, Save, Trash2, House, Car, UserAdd } from '../lib/icons';
+import {
+  FileSpreadsheet, Plus, Save, Trash2, House, Car, UserAdd, User, IdCard, Hashtag, Phone, Location,
+  Money, Clock, People, Percent, Ruler, Tag, Calendar, Palette,
+} from '../lib/icons';
 import { api } from '@credit-core/api-client';
 import { ProductType, type CollateralDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
 import { Button, Card, Field, Input } from '../components/primitives';
-import { MoneyInput, DatePicker } from '../components/forms';
+import { MoneyInput, DatePicker, PhoneInput, PassportInput, digitsOnly } from '../components/forms';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { cn, formatMoney } from '../lib/cn';
@@ -117,9 +120,9 @@ export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImpor
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="space-y-4 lg:col-span-1">
-          <h2 className="font-semibold">Kredit</h2>
-          <Field label="Summa"><MoneyInput value={form.amount} onChange={(v) => setForm((s) => ({ ...s, amount: v }))} /></Field>
-          <Field label="Muddat (oy)"><Input type="number" value={form.termMonths ?? ''} onChange={(e) => setForm((s) => ({ ...s, termMonths: num(e.target.value) }))} /></Field>
+          <h2 className="flex items-center gap-2 font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-600/15 dark:text-brand-300"><Money className="h-4 w-4" /></span>Kredit</h2>
+          <Field label="Summa" icon={Money}><MoneyInput value={form.amount} onChange={(v) => setForm((s) => ({ ...s, amount: v }))} /></Field>
+          <Field label="Muddat (oy)" icon={Clock}><Input type="number" value={form.termMonths ?? ''} onChange={(e) => setForm((s) => ({ ...s, termMonths: num(e.target.value) }))} /></Field>
           <div className="rounded-xl bg-brand-50 p-3 text-sm dark:bg-brand-600/10">
             <p className="text-muted">Jami garov qiymati</p>
             <p className="nums text-lg font-bold text-brand-800 dark:text-brand-300">{formatMoney(totalCollateral)}</p>
@@ -127,36 +130,49 @@ export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImpor
         </Card>
 
         <Card className="space-y-4 lg:col-span-2">
-          <h2 className="font-semibold">Qarz oluvchi</h2>
+          <h2 className="flex items-center gap-2 font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-600/15 dark:text-brand-300"><User className="h-4 w-4" /></span>Qarz oluvchi</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="F.I.O" required><Input value={form.borrower.fullName} onChange={(e) => setB({ fullName: e.target.value })} /></Field>
-            <Field label="PINFL"><Input value={form.borrower.pinfl ?? ''} onChange={(e) => setB({ pinfl: e.target.value })} /></Field>
-            <Field label="Pasport seriya"><Input value={form.borrower.passportSeries ?? ''} onChange={(e) => setB({ passportSeries: e.target.value })} /></Field>
-            <Field label="Pasport raqami"><Input value={form.borrower.passportNumber ?? ''} onChange={(e) => setB({ passportNumber: e.target.value })} /></Field>
-            <Field label="Telefon"><Input value={form.borrower.phone ?? ''} onChange={(e) => setB({ phone: e.target.value })} /></Field>
-            <Field label="Manzil"><Input value={form.borrower.address ?? ''} onChange={(e) => setB({ address: e.target.value })} /></Field>
+            <Field label="F.I.O" required icon={User}><Input value={form.borrower.fullName} onChange={(e) => setB({ fullName: e.target.value })} /></Field>
+            <Field label="PINFL" icon={Hashtag} hint="14 ta raqam"><Input inputMode="numeric" maxLength={14} value={form.borrower.pinfl ?? ''} onChange={(e) => setB({ pinfl: digitsOnly(e.target.value, 14) })} placeholder="12345678901234" /></Field>
+            <Field label="Pasport seriya" icon={IdCard}><Input maxLength={2} value={form.borrower.passportSeries ?? ''} onChange={(e) => setB({ passportSeries: e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) })} placeholder="AA" /></Field>
+            <Field label="Pasport raqami" icon={IdCard}><Input inputMode="numeric" maxLength={7} value={form.borrower.passportNumber ?? ''} onChange={(e) => setB({ passportNumber: digitsOnly(e.target.value, 7) })} placeholder="1234567" /></Field>
+            <Field label="Telefon" icon={Phone}><PhoneInput value={form.borrower.phone ?? null} onChange={(v) => setB({ phone: v })} /></Field>
+            <Field label="Manzil" icon={Location}><Input value={form.borrower.address ?? ''} onChange={(e) => setB({ address: e.target.value })} /></Field>
           </div>
         </Card>
       </div>
 
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Kafillar <span className="text-muted">({form.guarantors.length})</span></h2>
+          <h2 className="flex items-center gap-2 font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-success-50 text-success-700 dark:bg-success-600/15 dark:text-success-400"><People className="h-4 w-4" /></span>Kafillar <span className="text-muted">({form.guarantors.length})</span></h2>
           <Button variant="secondary" onClick={addGuarantor}><UserAdd className="h-4 w-4" /> Kafil qo'shish</Button>
         </div>
-        {form.guarantors.length === 0 && <p className="text-sm text-muted">Kafil biriktirilmagan (ixtiyoriy, bir nechta bo'lishi mumkin)</p>}
-        {form.guarantors.map((g, i) => (
-          <div key={i} className="grid gap-3 rounded-xl border border-slate-100 p-3 dark:border-white/10 sm:grid-cols-5">
-            <Input placeholder="F.I.O" value={g.fullName} onChange={(e) => setG(i, { fullName: e.target.value })} />
-            <Input placeholder="PINFL" value={g.pinfl ?? ''} onChange={(e) => setG(i, { pinfl: e.target.value })} />
-            <Input placeholder="Pasport" value={g.passportNumber ?? ''} onChange={(e) => setG(i, { passportNumber: e.target.value })} />
-            <Input placeholder="Munosabati" value={g.relation ?? ''} onChange={(e) => setG(i, { relation: e.target.value })} />
-            <div className="flex gap-2">
-              <Input placeholder="Telefon" value={g.phone ?? ''} onChange={(e) => setG(i, { phone: e.target.value })} />
-              <Button variant="ghost" className="px-2" onClick={() => removeG(i)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
+        {form.guarantors.length === 0 && (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-hairline py-8 text-center dark:border-white/10">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-300 dark:bg-white/5"><People className="h-5 w-5" /></span>
+            <p className="text-sm text-muted">Kafil biriktirilmagan (ixtiyoriy, bir nechta bo'lishi mumkin)</p>
           </div>
-        ))}
+        )}
+        <div className="space-y-3">
+          {form.guarantors.map((g, i) => (
+            <div key={i} className="rounded-xl border border-hairline p-4 dark:border-white/10">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-success-600 text-xs font-bold text-white">{i + 1}</span>
+                  Kafil {i + 1}
+                </span>
+                <Button variant="ghost" className="px-2 text-danger-600" onClick={() => removeG(i)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Field label="F.I.O" icon={User}><Input placeholder="To'liq ism" value={g.fullName} onChange={(e) => setG(i, { fullName: e.target.value })} /></Field>
+                <Field label="PINFL" icon={Hashtag}><Input inputMode="numeric" maxLength={14} placeholder="14 ta raqam" value={g.pinfl ?? ''} onChange={(e) => setG(i, { pinfl: digitsOnly(e.target.value, 14) })} /></Field>
+                <Field label="Pasport" icon={IdCard}><PassportInput value={g.passportNumber ?? null} onChange={(v) => setG(i, { passportNumber: v })} /></Field>
+                <Field label="Munosabati" icon={People}><Input placeholder="aka, ota, do'st…" value={g.relation ?? ''} onChange={(e) => setG(i, { relation: e.target.value })} /></Field>
+                <Field label="Telefon" icon={Phone}><PhoneInput value={g.phone ?? null} onChange={(v) => setG(i, { phone: v })} /></Field>
+              </div>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <div className="flex items-center justify-between">
@@ -258,34 +274,34 @@ function CollateralCard({ index, c, onChange, onRemove, canRemove }: {
 
       {isAuto ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Model (markasi)" required><Input value={c.model ?? ''} onChange={(e) => onChange({ model: e.target.value })} placeholder="CHEVROLET MONZA" /></Field>
-          <Field label="Davlat raqami"><Input value={c.stateNumber ?? ''} onChange={(e) => onChange({ stateNumber: e.target.value })} placeholder="10O011OD" /></Field>
-          <Field label="Tex passport (AAS №)"><Input value={c.techPassportNo ?? ''} onChange={(e) => onChange({ techPassportNo: e.target.value })} /></Field>
-          <Field label="Kuzov turi"><Input value={c.bodyType ?? ''} onChange={(e) => onChange({ bodyType: e.target.value })} placeholder="YENGIL SEDAN" /></Field>
-          <Field label="Kuzov №"><Input value={c.bodyNo ?? ''} onChange={(e) => onChange({ bodyNo: e.target.value })} /></Field>
-          <Field label="Dvigatel №"><Input value={c.engineNo ?? ''} onChange={(e) => onChange({ engineNo: e.target.value })} /></Field>
-          <Field label="Shassi"><Input value={c.chassis ?? ''} onChange={(e) => onChange({ chassis: e.target.value })} /></Field>
-          <Field label="Rang"><Input value={c.color ?? ''} onChange={(e) => onChange({ color: e.target.value })} /></Field>
-          <Field label="Yil"><Input type="number" value={c.year ?? ''} onChange={(e) => onChange({ year: num(e.target.value) })} /></Field>
-          <Field label="Probeg (km)"><Input type="number" value={c.mileage ?? ''} onChange={(e) => onChange({ mileage: num(e.target.value) })} /></Field>
+          <Field label="Model (markasi)" required icon={Car}><Input value={c.model ?? ''} onChange={(e) => onChange({ model: e.target.value })} placeholder="CHEVROLET MONZA" /></Field>
+          <Field label="Davlat raqami" icon={Hashtag}><Input value={c.stateNumber ?? ''} onChange={(e) => onChange({ stateNumber: e.target.value })} placeholder="10O011OD" /></Field>
+          <Field label="Tex passport (AAS №)" icon={IdCard}><Input value={c.techPassportNo ?? ''} onChange={(e) => onChange({ techPassportNo: e.target.value })} /></Field>
+          <Field label="Kuzov turi" icon={Car}><Input value={c.bodyType ?? ''} onChange={(e) => onChange({ bodyType: e.target.value })} placeholder="YENGIL SEDAN" /></Field>
+          <Field label="Kuzov №" icon={Hashtag}><Input value={c.bodyNo ?? ''} onChange={(e) => onChange({ bodyNo: e.target.value })} /></Field>
+          <Field label="Dvigatel №" icon={Hashtag}><Input value={c.engineNo ?? ''} onChange={(e) => onChange({ engineNo: e.target.value })} /></Field>
+          <Field label="Shassi" icon={Hashtag}><Input value={c.chassis ?? ''} onChange={(e) => onChange({ chassis: e.target.value })} /></Field>
+          <Field label="Rang" icon={Palette}><Input value={c.color ?? ''} onChange={(e) => onChange({ color: e.target.value })} /></Field>
+          <Field label="Yil" icon={Calendar}><Input type="number" value={c.year ?? ''} onChange={(e) => onChange({ year: num(e.target.value) })} /></Field>
+          <Field label="Probeg (km)" icon={Clock}><Input type="number" value={c.mileage ?? ''} onChange={(e) => onChange({ mileage: num(e.target.value) })} /></Field>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Manzil" required className="sm:col-span-2"><Input value={c.address ?? ''} onChange={(e) => onChange({ address: e.target.value })} /></Field>
-          <Field label="Reestr №"><Input value={c.registryNo ?? ''} onChange={(e) => onChange({ registryNo: e.target.value })} /></Field>
-          <Field label="Kadastr №"><Input value={c.cadastreNo ?? ''} onChange={(e) => onChange({ cadastreNo: e.target.value })} /></Field>
-          <Field label="Mulk turi"><Input value={c.propertyType ?? ''} onChange={(e) => onChange({ propertyType: e.target.value })} /></Field>
-          <Field label="Ko'chirma sanasi"><DatePicker value={c.registrationDate ?? null} onChange={(iso) => onChange({ registrationDate: iso })} /></Field>
-          <Field label="Umumiy maydon (m²)"><Input type="number" value={c.totalAreaM2 ?? ''} onChange={(e) => onChange({ totalAreaM2: num(e.target.value) })} /></Field>
-          <Field label="Yashash maydoni (m²)"><Input type="number" value={c.livingAreaM2 ?? ''} onChange={(e) => onChange({ livingAreaM2: num(e.target.value) })} /></Field>
-          <Field label="Xonalar nomi"><Input value={c.roomNames ?? ''} onChange={(e) => onChange({ roomNames: e.target.value })} /></Field>
-          <Field label="Xonalar soni"><Input type="number" value={c.roomCount ?? ''} onChange={(e) => onChange({ roomCount: num(e.target.value) })} /></Field>
+          <Field label="Manzil" required className="sm:col-span-2" icon={Location}><Input value={c.address ?? ''} onChange={(e) => onChange({ address: e.target.value })} /></Field>
+          <Field label="Reestr №" icon={Hashtag}><Input value={c.registryNo ?? ''} onChange={(e) => onChange({ registryNo: e.target.value })} /></Field>
+          <Field label="Kadastr №" icon={Hashtag}><Input value={c.cadastreNo ?? ''} onChange={(e) => onChange({ cadastreNo: e.target.value })} /></Field>
+          <Field label="Mulk turi" icon={House}><Input value={c.propertyType ?? ''} onChange={(e) => onChange({ propertyType: e.target.value })} /></Field>
+          <Field label="Ko'chirma sanasi" icon={Calendar}><DatePicker value={c.registrationDate ?? null} onChange={(iso) => onChange({ registrationDate: iso })} /></Field>
+          <Field label="Umumiy maydon (m²)" icon={Ruler}><Input type="number" value={c.totalAreaM2 ?? ''} onChange={(e) => onChange({ totalAreaM2: num(e.target.value) })} /></Field>
+          <Field label="Yashash maydoni (m²)" icon={Ruler}><Input type="number" value={c.livingAreaM2 ?? ''} onChange={(e) => onChange({ livingAreaM2: num(e.target.value) })} /></Field>
+          <Field label="Xonalar nomi" icon={Tag}><Input value={c.roomNames ?? ''} onChange={(e) => onChange({ roomNames: e.target.value })} /></Field>
+          <Field label="Xonalar soni" icon={Hashtag}><Input type="number" value={c.roomCount ?? ''} onChange={(e) => onChange({ roomCount: num(e.target.value) })} /></Field>
         </div>
       )}
 
-      <div className="grid gap-4 border-t border-slate-100 pt-4 dark:border-white/10 sm:grid-cols-2">
-        <Field label="Kelishilgan garov qiymati"><MoneyInput value={c.agreedValue ?? null} onChange={(v) => onChange({ agreedValue: v })} /></Field>
-        <Field label="Qiymat (prописью)"><Input value={c.agreedValueWords ?? ''} onChange={(e) => onChange({ agreedValueWords: e.target.value })} /></Field>
+      <div className="grid gap-4 border-t border-hairline pt-4 dark:border-white/10 sm:grid-cols-2">
+        <Field label="Kelishilgan garov qiymati" icon={Money}><MoneyInput value={c.agreedValue ?? null} onChange={(v) => onChange({ agreedValue: v })} /></Field>
+        <Field label="Qiymat (prописью)" icon={Tag}><Input value={c.agreedValueWords ?? ''} onChange={(e) => onChange({ agreedValueWords: e.target.value })} /></Field>
       </div>
 
       <div className="space-y-2">
@@ -298,8 +314,8 @@ function CollateralCard({ index, c, onChange, onRemove, canRemove }: {
         {c.owners.map((o, idx) => (
           <div key={idx} className="grid gap-2 rounded-xl border border-slate-100 p-2 dark:border-white/10 sm:grid-cols-4">
             <Input placeholder="F.I.O" value={o.fullName} onChange={(e) => { const owners = [...c.owners]; owners[idx] = { ...o, fullName: e.target.value }; setOwners(owners); }} />
-            <Input placeholder="Pasport" value={o.passportNumber ?? ''} onChange={(e) => { const owners = [...c.owners]; owners[idx] = { ...o, passportNumber: e.target.value }; setOwners(owners); }} />
-            <Input placeholder="Ulush %" type="number" value={o.sharePercent ?? ''} onChange={(e) => { const owners = [...c.owners]; owners[idx] = { ...o, sharePercent: num(e.target.value) }; setOwners(owners); }} />
+            <PassportInput value={o.passportNumber ?? null} onChange={(v) => { const owners = [...c.owners]; owners[idx] = { ...o, passportNumber: v }; setOwners(owners); }} />
+            <Input placeholder="Ulush %" type="number" min={0} max={100} value={o.sharePercent ?? ''} onChange={(e) => { const owners = [...c.owners]; owners[idx] = { ...o, sharePercent: Math.min(100, Number(digitsOnly(e.target.value, 3)) || 0) || null }; setOwners(owners); }} />
             <Button variant="ghost" onClick={() => setOwners(c.owners.filter((_, x) => x !== idx))}><Trash2 className="h-4 w-4" /></Button>
           </div>
         ))}

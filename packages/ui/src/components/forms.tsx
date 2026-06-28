@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronDown, ArrowRight } from '../lib/icons';
+import { Input } from './primitives';
 import { cn } from '../lib/cn';
 
 /** Anchored popover rendered in a portal (never clipped by overflow/modals). */
@@ -78,6 +79,61 @@ export function MoneyInput({
       <span className="ml-2 shrink-0 text-xs font-medium text-muted">{suffix}</span>
     </div>
   );
+}
+
+/** O'zbek telefon raqami maskasi: +998 XX XXX XX XX (9 ta milliy raqam). */
+export function formatUzPhone(raw: string): string {
+  let d = (raw ?? '').replace(/\D/g, '');
+  if (d.startsWith('998')) d = d.slice(3);
+  d = d.slice(0, 9);
+  if (!d) return '';
+  let out = '+998';
+  if (d.length > 0) out += ' ' + d.slice(0, 2);
+  if (d.length > 2) out += ' ' + d.slice(2, 5);
+  if (d.length > 5) out += ' ' + d.slice(5, 7);
+  if (d.length > 7) out += ' ' + d.slice(7, 9);
+  return out;
+}
+
+export function PhoneInput({
+  value, onChange, placeholder = '+998 90 123 45 67',
+}: { value: string | null; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <Input
+      inputMode="tel"
+      value={value ?? ''}
+      placeholder={placeholder}
+      maxLength={17}
+      onChange={(e) => onChange(formatUzPhone(e.target.value))}
+    />
+  );
+}
+
+/** Pasport: 2 ta harf + 7 ta raqam (masalan AA1234567). */
+export function formatPassport(raw: string): string {
+  const v = (raw ?? '').toUpperCase();
+  const letters = (v.match(/[A-Z]/g) ?? []).slice(0, 2).join('');
+  const digits = (v.match(/[0-9]/g) ?? []).slice(0, 7).join('');
+  return letters + digits;
+}
+
+export function PassportInput({
+  value, onChange, placeholder = 'AA1234567',
+}: { value: string | null; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <Input
+      value={value ?? ''}
+      placeholder={placeholder}
+      maxLength={9}
+      autoCapitalize="characters"
+      onChange={(e) => onChange(formatPassport(e.target.value))}
+    />
+  );
+}
+
+/** Faqat raqam, berilgan uzunlikgacha (PINFL=14, pasport raqami=7, ...). */
+export function digitsOnly(raw: string, max: number): string {
+  return (raw ?? '').replace(/\D/g, '').slice(0, max);
 }
 
 export interface Option<T extends string> { value: T; label: string; icon?: React.ComponentType<{ className?: string }> }

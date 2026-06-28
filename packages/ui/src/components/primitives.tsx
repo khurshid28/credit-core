@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { cn } from '../lib/cn';
+import { surface } from '../lib/surfaces';
 import { Eye, EyeOff } from '../lib/icons';
 import { CaseStatus, STATUS_LABEL } from '@credit-core/shared';
 
@@ -74,18 +75,21 @@ export function Field({
   label,
   required,
   hint,
+  icon: Icon,
   children,
   className,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <label className={cn('block space-y-1.5', className)}>
-      <span className="text-xs font-medium uppercase tracking-wide text-muted">
+      <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted">
+        {Icon && <Icon className="h-3.5 w-3.5 text-slate-400" />}
         {label}
         {required && <span className="ml-0.5 text-danger-600">*</span>}
       </span>
@@ -96,12 +100,7 @@ export function Field({
 }
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn('rounded-2xl border border-hairline bg-surface p-6 shadow-card dark:bg-navy-800 dark:border-white/10', className)}
-      {...props}
-    />
-  );
+  return <div className={cn(surface, 'p-6', className)} {...props} />;
 }
 
 export function Skeleton({ className }: { className?: string }) {

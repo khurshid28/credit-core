@@ -5,3 +5,4 @@ export * from './components/widgets';
 export { Splash } from './components/Splash';
 export { AppShell } from './components/AppShell';
 export { cn, formatMoney } from './lib/cn';
+export { surface, surfaceInteractive, cardPad, cardPadSm } from './lib/surfaces';

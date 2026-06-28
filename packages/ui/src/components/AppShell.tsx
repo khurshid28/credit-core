@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, LogOut, Menu, Search, ShieldCheck, X } from '../lib/icons';
@@ -20,8 +20,14 @@ export function AppShell({ title, nav, children }: { title: string; nav: NavItem
   const { user, logout } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false); // mobile drawer
-  const [collapsed, setCollapsed] = useState(false); // desktop rail
+  const [collapsed, setCollapsed] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('cc.sidebar.collapsed') === '1',
+  ); // desktop rail (persisted)
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('cc.sidebar.collapsed', collapsed ? '1' : '0');
+  }, [collapsed]);
 
   const { data: unread } = useQuery({ queryKey: ['unread'], queryFn: () => api.unreadCount(), refetchInterval: 20_000 });
 

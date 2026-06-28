@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building, Plus } from '../lib/icons';
+import { Building, Plus, Hashtag, Location } from '../lib/icons';
 import { api } from '@credit-core/api-client';
 import type { BranchDto } from '@credit-core/shared';
 import { Button, Field, Input } from '../components/primitives';
@@ -70,10 +70,10 @@ export function BranchesPage() {
         }
       >
         <div className="space-y-4">
-          <Field label="Nomi" required><Input value={b.name} onChange={(e) => setB({ ...b, name: e.target.value })} placeholder="Toshkent filiali" autoFocus /></Field>
+          <Field label="Nomi" required icon={Building}><Input value={b.name} onChange={(e) => setB({ ...b, name: e.target.value })} placeholder="Toshkent filiali" autoFocus /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Simvol" required hint="qisqa kod, masalan TK"><Input value={b.symbol} onChange={(e) => setB({ ...b, symbol: e.target.value.toUpperCase() })} placeholder="TK" /></Field>
-            <Field label="Hudud">
+            <Field label="Simvol" required icon={Hashtag} hint="qisqa kod, masalan TK"><Input value={b.symbol} onChange={(e) => setB({ ...b, symbol: e.target.value.toUpperCase() })} placeholder="TK" /></Field>
+            <Field label="Hudud" icon={Location}>
               <Select<string> value={b.region} onChange={(v) => setB({ ...b, region: v })} placeholder="— hududni tanlang —"
                 options={REGIONS.map((r) => ({ value: r, label: r }))} />
             </Field>

@@ -5,6 +5,7 @@ import { api } from '@credit-core/api-client';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { Card, Skeleton } from '../components/primitives';
 import { cn } from '../lib/cn';
+import { surfaceInteractive } from '../lib/surfaces';
 
 const roleTone: Record<Role, string> = {
   [Role.OPERATOR]: 'bg-brand-600',
@@ -48,9 +49,9 @@ export function NotificationsPage() {
               key={n.id}
               to={`/cases/${n.caseId}`}
               className={cn(
-                'group relative flex items-start gap-3.5 overflow-hidden rounded-2xl border bg-surface p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-pop',
-                'dark:bg-navy-800 dark:border-white/10',
-                n.read ? 'border-hairline' : 'border-brand-200 dark:border-brand-500/40',
+                surfaceInteractive,
+                'group relative flex items-start gap-3.5 overflow-hidden p-4',
+                !n.read && 'border-brand-200 dark:border-brand-500/40',
               )}
             >
               {!n.read && <span className="absolute left-0 top-0 h-full w-1 bg-brand-500" />}

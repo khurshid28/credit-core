@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../lib/cn';
+import { surface, cardPad } from '../lib/surfaces';
 
 /**
  * TailAdmin-style dashboard widgets, themed with credit-core tokens
@@ -35,12 +36,7 @@ export function MetricCard({
 }) {
   const up = (delta ?? 0) >= 0;
   return (
-    <div
-      className={cn(
-        'rounded-2xl border border-hairline bg-surface p-5 shadow-card dark:border-white/10 dark:bg-navy-800 md:p-6',
-        className,
-      )}
-    >
+    <div className={cn(surface, cardPad, className)}>
       <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', toneMap[tone])}>
         <Icon className="h-6 w-6" />
       </div>
@@ -58,7 +54,7 @@ export function MetricCard({
                 : 'bg-danger-50 text-danger-700 dark:bg-danger-600/15 dark:text-danger-400',
             )}
           >
-            <span aria-hidden>{up ? '↑' : '↓'}</span>
+            <span aria-hidden>{up ? '\u2191' : '\u2193'}</span>
             {Math.abs(delta)}%
           </span>
         )}
@@ -83,12 +79,7 @@ export function WidgetCard({
   bodyClassName?: string;
 }) {
   return (
-    <section
-      className={cn(
-        'rounded-2xl border border-hairline bg-surface p-5 shadow-card dark:border-white/10 dark:bg-navy-800 md:p-6',
-        className,
-      )}
-    >
+    <section className={cn(surface, cardPad, className)}>
       {(title || action) && (
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
