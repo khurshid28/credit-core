@@ -4,6 +4,7 @@ import { UserAdd } from '../lib/icons';
 import { api } from '@credit-core/api-client';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { Button, Card, Field, Input } from '../components/primitives';
+import { Select } from '../components/forms';
 import { DataTable, type Column } from '../components/DataTable';
 
 const ROLES: Role[] = [Role.OPERATOR, Role.MODERATOR, Role.DIRECTOR, Role.ADMIN];
@@ -49,15 +50,11 @@ export function UsersPage() {
           <Field label="Login" required><Input value={u.login} onChange={(e) => setU({ ...u, login: e.target.value })} /></Field>
           <Field label="Parol" required><Input type="password" value={u.password} onChange={(e) => setU({ ...u, password: e.target.value })} /></Field>
           <Field label="Rol">
-            <select className="w-full rounded-xl border border-hairline px-3 py-2.5 text-sm" value={u.role} onChange={(e) => setU({ ...u, role: e.target.value as Role })}>
-              {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-            </select>
+            <Select value={u.role} onChange={(v) => setU({ ...u, role: v })} options={ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} />
           </Field>
           <Field label="Filial">
-            <select className="w-full rounded-xl border border-hairline px-3 py-2.5 text-sm" value={u.branchId} onChange={(e) => setU({ ...u, branchId: e.target.value })}>
-              <option value="">— markaziy —</option>
-              {branches?.map((br) => <option key={br.id} value={br.id}>{br.name}</option>)}
-            </select>
+            <Select<string> value={u.branchId} onChange={(v) => setU({ ...u, branchId: v })} placeholder="— markaziy —"
+              options={[{ value: '', label: '— markaziy —' }, ...(branches ?? []).map((br) => ({ value: br.id, label: br.name }))]} />
           </Field>
           <Button className="w-full" loading={create.isPending} disabled={!u.fullName || !u.login || u.password.length < 4} onClick={() => create.mutate()}>
             {!create.isPending && <UserAdd className="h-4 w-4" />} Qo‘shish

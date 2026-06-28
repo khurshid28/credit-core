@@ -5,6 +5,7 @@ import { FileSpreadsheet, Plus, Save, Trash2, House, Car, UserAdd } from '../lib
 import { api } from '@credit-core/api-client';
 import { ProductType, type CollateralDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
 import { Button, Card, Field, Input } from '../components/primitives';
+import { MoneyInput, DatePicker } from '../components/forms';
 import { cn, formatMoney } from '../lib/cn';
 
 const num = (v: string): number | null => (v === '' ? null : Number(v));
@@ -116,7 +117,7 @@ export function CaseForm() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="space-y-4 lg:col-span-1">
           <h2 className="font-semibold">Kredit</h2>
-          <Field label="Summa (so'm)"><Input type="number" value={form.amount ?? ''} onChange={(e) => setForm({ ...form, amount: num(e.target.value) })} /></Field>
+          <Field label="Summa"><MoneyInput value={form.amount} onChange={(v) => setForm({ ...form, amount: v })} /></Field>
           <Field label="Muddat (oy)"><Input type="number" value={form.termMonths ?? ''} onChange={(e) => setForm({ ...form, termMonths: num(e.target.value) })} /></Field>
           <div className="rounded-xl bg-brand-50 p-3 text-sm">
             <p className="text-muted">Jami garov qiymati</p>
@@ -209,7 +210,7 @@ function CollateralCard({ index, c, onChange, onRemove, canRemove }: {
           <Field label="Reestr №"><Input value={c.registryNo ?? ''} onChange={(e) => onChange({ registryNo: e.target.value })} /></Field>
           <Field label="Kadastr №"><Input value={c.cadastreNo ?? ''} onChange={(e) => onChange({ cadastreNo: e.target.value })} /></Field>
           <Field label="Mulk turi"><Input value={c.propertyType ?? ''} onChange={(e) => onChange({ propertyType: e.target.value })} /></Field>
-          <Field label="Ko'chirma sanasi"><Input type="date" value={c.registrationDate?.slice(0, 10) ?? ''} onChange={(e) => onChange({ registrationDate: e.target.value || null })} /></Field>
+          <Field label="Ko'chirma sanasi"><DatePicker value={c.registrationDate ?? null} onChange={(iso) => onChange({ registrationDate: iso })} /></Field>
           <Field label="Umumiy maydon (m²)"><Input type="number" value={c.totalAreaM2 ?? ''} onChange={(e) => onChange({ totalAreaM2: num(e.target.value) })} /></Field>
           <Field label="Yashash maydoni (m²)"><Input type="number" value={c.livingAreaM2 ?? ''} onChange={(e) => onChange({ livingAreaM2: num(e.target.value) })} /></Field>
           <Field label="Xonalar nomi"><Input value={c.roomNames ?? ''} onChange={(e) => onChange({ roomNames: e.target.value })} /></Field>
@@ -218,7 +219,7 @@ function CollateralCard({ index, c, onChange, onRemove, canRemove }: {
       )}
 
       <div className="grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
-        <Field label="Kelishilgan garov qiymati"><Input type="number" value={c.agreedValue ?? ''} onChange={(e) => onChange({ agreedValue: num(e.target.value) })} /></Field>
+        <Field label="Kelishilgan garov qiymati"><MoneyInput value={c.agreedValue ?? null} onChange={(v) => onChange({ agreedValue: v })} /></Field>
         <Field label="Qiymat (prописью)"><Input value={c.agreedValueWords ?? ''} onChange={(e) => onChange({ agreedValueWords: e.target.value })} /></Field>
       </div>
 

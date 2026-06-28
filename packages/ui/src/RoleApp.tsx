@@ -14,6 +14,8 @@ import { AnimatePresence } from 'framer-motion';
 import { BarChart3, FilePlus2, LayoutGrid, Calculator, Messages, Building, UserAdd, Bell as BellIcon } from './lib/icons';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { AuthProvider, useAuth } from './lib/auth';
+import { ThemeProvider } from './lib/theme';
+import { I18nProvider, useI18n } from './lib/i18n';
 import { Splash } from './components/Splash';
 import { LoginPage } from './components/LoginPage';
 import { AppShell, type NavItem } from './components/AppShell';
@@ -30,22 +32,23 @@ import { UsersPage } from './pages/UsersPage';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-function navFor(role: Role): NavItem[] {
-  const base: NavItem[] = [{ to: '/', label: 'Arizalar', icon: LayoutGrid }];
-  if (role === Role.OPERATOR) base.push({ to: '/cases/new', label: 'Yangi ariza', icon: FilePlus2 });
-  base.push({ to: '/calculator', label: 'Kalkulyator', icon: Calculator });
-  base.push({ to: '/chats', label: 'Chatlar', icon: Messages, badgeKey: 'unread' });
-  base.push({ to: '/analytics', label: 'Monitoring', icon: BarChart3 });
-  base.push({ to: '/notifications', label: 'Bildirishnomalar', icon: BellIcon, badgeKey: 'unread' });
+function navFor(role: Role, t: (k: string) => string): NavItem[] {
+  const base: NavItem[] = [{ to: '/', label: t('nav.applications'), icon: LayoutGrid }];
+  if (role === Role.OPERATOR) base.push({ to: '/cases/new', label: t('nav.new'), icon: FilePlus2 });
+  base.push({ to: '/calculator', label: t('nav.calculator'), icon: Calculator });
+  base.push({ to: '/chats', label: t('nav.chats'), icon: Messages, badgeKey: 'unread' });
+  base.push({ to: '/analytics', label: t('nav.monitoring'), icon: BarChart3 });
+  base.push({ to: '/notifications', label: t('nav.notifications'), icon: BellIcon, badgeKey: 'unread' });
   if (role === Role.ADMIN) {
-    base.push({ to: '/branches', label: 'Filiallar', icon: Building });
-    base.push({ to: '/users', label: 'Foydalanuvchilar', icon: UserAdd });
+    base.push({ to: '/branches', label: t('nav.branches'), icon: Building });
+    base.push({ to: '/users', label: t('nav.users'), icon: UserAdd });
   }
   return base;
 }
 
 function Shell({ role, title }: { role: Role; title: string }) {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
 
   if (!user) return <LoginPage role={role} title={title} />;
 
@@ -60,7 +63,7 @@ function Shell({ role, title }: { role: Role; title: string }) {
   }
 
   return (
-    <AppShell title={title} nav={navFor(role)}>
+    <AppShell title={title} nav={navFor(role, t)}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         {role === Role.OPERATOR && <Route path="/cases/new" element={<CaseForm />} />}
@@ -98,12 +101,16 @@ function Gate({ role, title }: { role: Role; title: string }) {
 
 export function RoleApp({ role, title }: { role: Role; title: string }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <Gate role={role} title={title} />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <BrowserRouter>
+              <Gate role={role} title={title} />
+            </BrowserRouter>
+          </AuthProvider>
+        </QueryClientProvider>
+      </I18nProvider>
+    </ThemeProvider>
   );
 }

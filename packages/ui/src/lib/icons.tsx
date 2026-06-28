@@ -53,6 +53,11 @@ export const ArrowRight = make(Iso.ArrowRight);
 export const Calculator = make(Iso.Calculator);
 export const Messages = make(Iso.Messages2 ?? Iso.Message ?? Iso.Sms);
 export const Buildings = make(Iso.Buildings2 ?? Iso.Building);
+export const ChevronDown = make(Iso.ArrowDown2);
+export const Calendar = make(Iso.Calendar);
+export const Sun = make(Iso.Sun1);
+export const Moon = make(Iso.Moon);
+export const Globe = make(Iso.Global);
 
 // Aliases matching prior (lucide) names so call sites need no JSX changes.
 export const CheckCircle2 = Check;

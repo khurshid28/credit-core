@@ -4,6 +4,7 @@ import { Paperclip, Search, Send, FileText, Download } from '../lib/icons';
 import { api, downloadBlob, viewDocument } from '@credit-core/api-client';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { Button, Input } from './primitives';
+import { Select } from './forms';
 import { cn } from '../lib/cn';
 
 const ROLES: Role[] = [Role.OPERATOR, Role.MODERATOR, Role.DIRECTOR, Role.ADMIN];
@@ -114,14 +115,10 @@ export function CaseChat({ caseId }: { caseId: string }) {
           </div>
         )}
         <div className="flex items-center gap-2">
-          <select
-            value={toRole}
-            onChange={(e) => setToRole(e.target.value as Role | '')}
-            className="rounded-xl border border-hairline px-2 py-2.5 text-sm"
-          >
-            <option value="">Hammaga</option>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-          </select>
+          <div className="w-32 shrink-0">
+            <Select<string> value={toRole} onChange={(v) => setToRole(v as Role | '')}
+              options={[{ value: '', label: 'Hammaga' }, ...ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))]} />
+          </div>
           <input ref={fileRef} type="file" className="hidden" onChange={(e) => setPickedFile(e.target.files?.[0] ?? null)} />
           <Button variant="secondary" className="px-3" onClick={() => fileRef.current?.click()} aria-label="Fayl">
             <Paperclip className="h-4 w-4" />

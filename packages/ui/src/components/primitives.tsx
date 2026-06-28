@@ -15,7 +15,7 @@ export function Button({
 }) {
   const variants: Record<string, string> = {
     primary: 'bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900 shadow-soft focus-visible:ring-brand-300',
-    secondary: 'bg-white text-ink border border-hairline hover:bg-slate-50 active:bg-slate-100 focus-visible:ring-brand-200',
+    secondary: 'bg-white text-ink border border-hairline hover:bg-slate-50 active:bg-slate-100 focus-visible:ring-brand-200 dark:bg-navy-800 dark:text-slate-100 dark:border-white/10 dark:hover:bg-navy-700',
     accent: 'bg-navy-800 text-white hover:bg-navy-700 focus-visible:ring-navy-700/40',
     danger: 'bg-danger-600 text-white hover:bg-danger-700 focus-visible:ring-danger-600/40',
     ghost: 'text-muted hover:bg-slate-100 active:bg-slate-200 focus-visible:ring-brand-200',
@@ -43,6 +43,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
       className={cn(
         'w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition',
         'placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100',
+        'dark:bg-navy-800 dark:border-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-brand-900',
         className,
       )}
       {...props}
@@ -78,7 +79,7 @@ export function Field({
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-2xl border border-hairline bg-surface p-6 shadow-card', className)}
+      className={cn('rounded-2xl border border-hairline bg-surface p-6 shadow-card dark:bg-navy-800 dark:border-white/10', className)}
       {...props}
     />
   );

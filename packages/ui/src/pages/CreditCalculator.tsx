@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Calculator } from '../lib/icons';
 import { Card, Field, Input } from '../components/primitives';
+import { MoneyInput } from '../components/forms';
 import { DataTable, type Column } from '../components/DataTable';
 import { formatMoney } from '../lib/cn';
 
@@ -73,7 +74,7 @@ export function CreditCalculator() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="space-y-4 lg:col-span-1">
-          <Field label="Kredit summasi (so'm)"><Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value) || 0)} /></Field>
+          <Field label="Kredit summasi"><MoneyInput value={amount} onChange={(v) => setAmount(v ?? 0)} /></Field>
           <Field label="Yillik foiz stavkasi (%)"><Input type="number" value={rate} onChange={(e) => setRate(Number(e.target.value) || 0)} /></Field>
           <Field label="Muddat (oy)"><Input type="number" value={months} onChange={(e) => setMonths(Number(e.target.value) || 0)} /></Field>
           <Field label="To‘lov usuli">

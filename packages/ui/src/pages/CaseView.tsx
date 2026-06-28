@@ -12,6 +12,7 @@ import {
 } from '@credit-core/shared';
 import { useAuth } from '../lib/auth';
 import { Button, Card, Field, Input, StatusBadge } from '../components/primitives';
+import { Select, MoneyInput } from '../components/forms';
 import { CaseTimeline } from '../components/CaseTimeline';
 import { formatMoney } from '../lib/cn';
 
@@ -113,13 +114,10 @@ export function CaseView() {
 
             {canUpload && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={uploadType}
-                  onChange={(e) => setUploadType(e.target.value as DocumentType)}
-                >
-                  {currentUploadTypes.map((t) => <option key={t} value={t}>{DOCUMENT_LABEL[t]}</option>)}
-                </select>
+                <div className="w-52">
+                  <Select<DocumentType> value={uploadType} onChange={(v) => setUploadType(v)}
+                    options={currentUploadTypes.map((t) => ({ value: t, label: DOCUMENT_LABEL[t] }))} />
+                </div>
                 <input ref={fileRef} type="file" className="hidden" onChange={(e) => e.target.files?.[0] && upload.mutate(e.target.files[0])} />
                 <Button variant="secondary" onClick={() => fileRef.current?.click()}>
                   <Upload className="h-4 w-4" /> Hujjat yuklash
@@ -271,7 +269,7 @@ function AdminPanel({
       <h2 className="font-semibold">Yakunlash (Admin)</h2>
       <Field label="KATM narxi">
         <div className="flex gap-2">
-          <Input type="number" value={katm} onChange={(e) => setKatm(e.target.value)} placeholder={String(c.katmPrice ?? '')} />
+          <MoneyInput value={katm ? Number(katm) : null} onChange={(v) => setKatm(v == null ? '' : String(v))} />
           <Button variant="secondary" onClick={() => saveKatm.mutate()} disabled={!katm}>Saqlash</Button>
         </div>
       </Field>

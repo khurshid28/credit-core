@@ -43,7 +43,7 @@ export function DataTable<T extends { id?: string }>({
   const alignCls = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card dark:bg-navy-800 dark:border-white/10">
       {searchable && (
         <div className="flex items-center gap-2 border-b border-hairline px-4 py-3">
           <Search className="h-4 w-4 text-slate-400" />
@@ -57,7 +57,7 @@ export function DataTable<T extends { id?: string }>({
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50/80 text-xs uppercase tracking-wide text-muted">
+          <thead className="bg-slate-50/80 text-xs uppercase tracking-wide text-muted dark:bg-white/5">
             <tr>
               {columns.map((c) => (
                 <th key={c.key} className={cn('px-4 py-3 font-medium', alignCls(c.align))}>{c.header}</th>

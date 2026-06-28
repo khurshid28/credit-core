@@ -5,6 +5,7 @@
  * Semantic tokens (surface/muted/hairline + status) avoid raw hex in components.
  */
 module.exports = {
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
