@@ -6,11 +6,11 @@ import {
   Money, Clock, People, Percent, Ruler, Tag, Calendar, Palette, Upload, FileText,
 } from '../lib/icons';
 import { api } from '@credit-core/api-client';
-import { ProductType, DocumentType, DOCUMENT_LABEL, type CollateralDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
+import { ProductType, DocumentType, DOCUMENT_LABEL, WorkflowDecision, type CollateralDto, type CreditCaseDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
 import { Button, Card, Field, Input } from '../components/primitives';
 import { MoneyInput, DatePicker, PhoneInput, PassportInput, PlateInput, Select, digitsOnly } from '../components/forms';
 import { CAR_MODELS } from '../lib/cars';
-import { Modal } from '../components/Modal';
+import { Modal, ConfirmDialog } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { cn, formatMoney } from '../lib/cn';
 
@@ -148,7 +148,15 @@ export function useCaseForm(id?: string) {
     }
   };
 
-  return { editing, form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, valid, saving, save, docs, addDocs, removeDoc, setDocTitle, colDocs, addColDocs, removeColDoc, setColDocField };
+  // Operator submits a draft into the moderation queue (DRAFT → MODERATION).
+  const submitToModerator = async (caseId: string) => {
+    await api.transition(caseId, { decision: WorkflowDecision.SUBMIT });
+    qc.invalidateQueries({ queryKey: ['cases'] });
+    qc.invalidateQueries({ queryKey: ['stats'] });
+    qc.invalidateQueries({ queryKey: ['case', caseId] });
+  };
+
+  return { editing, form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, valid, saving, save, submitToModerator, docs, addDocs, removeDoc, setDocTitle, colDocs, addColDocs, removeColDoc, setColDocField };
 }
 
 type FormApi = ReturnType<typeof useCaseForm>;
@@ -299,11 +307,13 @@ export function CaseForm() {
   const nav = useNavigate();
   const toast = useToast();
   const f = useCaseForm(id);
+  const [prompt, setPrompt] = useState<CreditCaseDto | null>(null);
 
   const onSave = async () => {
     const saved = await f.save();
     toast.success(f.editing ? 'Ariza yangilandi' : 'Ariza yaratildi', saved.number);
-    nav(`/cases/${saved.id}`);
+    if (saved.status === 'DRAFT') setPrompt(saved); // offer to send to the moderator
+    else nav(`/cases/${saved.id}`);
   };
 
   return (
@@ -318,7 +328,45 @@ export function CaseForm() {
         </Button>
       </div>
       <CaseFormFields f={f} />
+      <SubmitToModeratorPrompt
+        c={prompt}
+        submit={f.submitToModerator}
+        onDone={(c) => { setPrompt(null); nav(`/cases/${c.id}`); }}
+      />
     </div>
+  );
+}
+
+/** After a draft is saved, ask the operator whether to send it to the moderator. */
+function SubmitToModeratorPrompt({
+  c, submit, onDone,
+}: { c: CreditCaseDto | null; submit: (id: string) => Promise<void>; onDone: (c: CreditCaseDto) => void }) {
+  const toast = useToast();
+  const [sending, setSending] = useState(false);
+  if (!c) return null;
+  const onConfirm = async () => {
+    setSending(true);
+    try {
+      await submit(c.id);
+      toast.success('Moderatorga yuborildi', c.number);
+      onDone(c);
+    } catch {
+      toast.error('Xatolik', 'Arizani yuborib bo‘lmadi');
+      setSending(false);
+    }
+  };
+  return (
+    <ConfirmDialog
+      open
+      onClose={() => onDone(c)}
+      onConfirm={onConfirm}
+      tone="primary"
+      title="Arizani moderatorga yuborasizmi?"
+      message={`${c.number} — yuborilgach ariza moderatsiyaga o‘tadi va tahrirlab bo‘lmaydi. Hozircha qoralama sifatida ham qoldirishingiz mumkin.`}
+      confirmLabel="Moderatorga yuborish"
+      cancelLabel="Qoralama qoldirish"
+      loading={sending}
+    />
   );
 }
 
@@ -328,32 +376,40 @@ export function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => 
   const f = useCaseForm(undefined);
   const nav = useNavigate();
   const toast = useToast();
+  const [prompt, setPrompt] = useState<CreditCaseDto | null>(null);
 
   const onSave = async () => {
     const saved = await f.save();
     toast.success('Ariza yaratildi', saved.number);
     onClose();
-    nav(`/cases/${saved.id}`);
+    setPrompt(saved); // offer to send to the moderator
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      size="full"
-      title="Yangi ariza"
-      description="Qarz oluvchi va garov(lar) — uy-joy va/yoki avtotransport"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>Bekor qilish</Button>
-          <Button onClick={onSave} loading={f.saving} disabled={!f.valid}>
-            {!f.saving && <Save className="h-4 w-4" />} Saqlash
-          </Button>
-        </>
-      }
-    >
-      <CaseFormFields f={f} />
-    </Modal>
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        size="full"
+        title="Yangi ariza"
+        description="Qarz oluvchi va garov(lar) — uy-joy va/yoki avtotransport"
+        footer={
+          <>
+            <Button variant="secondary" onClick={onClose}>Bekor qilish</Button>
+            <Button onClick={onSave} loading={f.saving} disabled={!f.valid}>
+              {!f.saving && <Save className="h-4 w-4" />} Saqlash
+            </Button>
+          </>
+        }
+      >
+        <CaseFormFields f={f} />
+      </Modal>
+      <SubmitToModeratorPrompt
+        c={prompt}
+        submit={f.submitToModerator}
+        onDone={(c) => { setPrompt(null); nav(`/cases/${c.id}`); }}
+      />
+    </>
   );
 }
 
