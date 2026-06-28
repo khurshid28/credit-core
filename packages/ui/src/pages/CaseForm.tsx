@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileSpreadsheet, Plus, Save, Trash2, House, Car } from '../lib/icons';
+import { FileSpreadsheet, Plus, Save, Trash2, House, Car, UserAdd } from '../lib/icons';
 import { api } from '@credit-core/api-client';
-import { ProductType, type CollateralDto, type UpsertCasePayload } from '@credit-core/shared';
+import { ProductType, type CollateralDto, type GuarantorDto, type UpsertCasePayload } from '@credit-core/shared';
 import { Button, Card, Field, Input } from '../components/primitives';
 import { cn, formatMoney } from '../lib/cn';
 
@@ -19,6 +19,7 @@ const emptyForm: UpsertCasePayload = {
   amount: null,
   termMonths: null,
   borrower: { ...emptyBorrower },
+  guarantors: [],
   collaterals: [newCollateral(ProductType.REAL_ESTATE)],
 };
 
@@ -41,6 +42,7 @@ export function CaseForm() {
         amount: c.amount,
         termMonths: c.termMonths,
         borrower: c.borrower ?? { ...emptyBorrower },
+        guarantors: c.guarantors ?? [],
         collaterals: c.collaterals.length ? c.collaterals : [newCollateral(ProductType.REAL_ESTATE)],
       });
       return c;
@@ -54,6 +56,10 @@ export function CaseForm() {
   };
   const addCol = (type: ProductType) => setForm({ ...form, collaterals: [...form.collaterals, newCollateral(type)] });
   const removeCol = (i: number) => setForm({ ...form, collaterals: form.collaterals.filter((_, idx) => idx !== i) });
+
+  const addGuarantor = () => setForm({ ...form, guarantors: [...form.guarantors, { fullName: '', passportSeries: null, passportNumber: null, pinfl: null, phone: null, relation: null }] });
+  const setG = (i: number, patch: Partial<GuarantorDto>) => setForm({ ...form, guarantors: form.guarantors.map((g, idx) => (idx === i ? { ...g, ...patch } : g)) });
+  const removeG = (i: number) => setForm({ ...form, guarantors: form.guarantors.filter((_, idx) => idx !== i) });
 
   const totalCollateral = form.collaterals.reduce((s, c) => s + (c.agreedValue ?? 0), 0);
 
@@ -130,6 +136,26 @@ export function CaseForm() {
           </div>
         </Card>
       </div>
+
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Kafillar <span className="text-muted">({form.guarantors.length})</span></h2>
+          <Button variant="secondary" onClick={addGuarantor}><UserAdd className="h-4 w-4" /> Kafil qo'shish</Button>
+        </div>
+        {form.guarantors.length === 0 && <p className="text-sm text-muted">Kafil biriktirilmagan (ixtiyoriy, bir nechta bo'lishi mumkin)</p>}
+        {form.guarantors.map((g, i) => (
+          <div key={i} className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-5">
+            <Input placeholder="F.I.O" value={g.fullName} onChange={(e) => setG(i, { fullName: e.target.value })} />
+            <Input placeholder="PINFL" value={g.pinfl ?? ''} onChange={(e) => setG(i, { pinfl: e.target.value })} />
+            <Input placeholder="Pasport" value={g.passportNumber ?? ''} onChange={(e) => setG(i, { passportNumber: e.target.value })} />
+            <Input placeholder="Munosabati" value={g.relation ?? ''} onChange={(e) => setG(i, { relation: e.target.value })} />
+            <div className="flex gap-2">
+              <Input placeholder="Telefon" value={g.phone ?? ''} onChange={(e) => setG(i, { phone: e.target.value })} />
+              <Button variant="ghost" className="px-2" onClick={() => removeG(i)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          </div>
+        ))}
+      </Card>
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Garovlar <span className="text-muted">({form.collaterals.length})</span></h2>

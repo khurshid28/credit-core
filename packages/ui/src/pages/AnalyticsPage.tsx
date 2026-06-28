@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Banknote, FileCheck2, Landmark, Layers } from '../lib/icons';
 import { api } from '@credit-core/api-client';
 import { CaseStatus, STATUS_LABEL } from '@credit-core/shared';
@@ -90,13 +90,19 @@ export function AnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-4 font-semibold">Holat bo‘yicha</h2>
-          <Bars
-            data={data.byStatus.map((s) => ({
-              label: STATUS_LABEL[s.status],
-              count: s.count,
-              color: statusColor[s.status],
-            }))}
-          />
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.byStatus.map((s) => ({ name: STATUS_LABEL[s.status], count: s.count, status: s.status }))} margin={{ left: -16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-20} textAnchor="end" height={50} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {data.byStatus.map((s) => <Cell key={s.status} fill={hexFor[s.status]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
         <Card>
           <h2 className="mb-4 font-semibold">Holatlar ulushi</h2>
@@ -127,10 +133,20 @@ export function AnalyticsPage() {
         </Card>
       </div>
 
-      <Card className="lg:col-span-2">
+      <Card>
         <h2 className="mb-4 font-semibold">Filial bo‘yicha</h2>
         {data.byBranch.length ? (
-          <Bars data={data.byBranch.map((b) => ({ label: b.branch, count: b.count }))} />
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart layout="vertical" data={data.byBranch.map((b) => ({ name: b.branch, count: b.count }))} margin={{ left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} width={90} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                <Bar dataKey="count" fill="#0369a1" radius={[0, 6, 6, 0]} barSize={18} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
           <p className="text-sm text-slate-400">Ma'lumot yo‘q</p>
         )}

@@ -69,6 +69,7 @@ export class CreditCasesService {
         branchId: user.branchId,
         createdById: user.id,
         borrower: { create: { ...dto.borrower, birthDate: parseDate(dto.borrower.birthDate) } },
+        guarantors: { create: (dto.guarantors ?? []).map((g) => ({ ...g })) },
         collaterals: { create: dto.collaterals.map((c) => this.collateralCreate(c)) },
       },
       include: caseInclude,
@@ -100,6 +101,8 @@ export class CreditCasesService {
         create: { caseId: id, ...dto.borrower, birthDate: parseDate(dto.borrower.birthDate) },
         update: { ...dto.borrower, birthDate: parseDate(dto.borrower.birthDate) },
       }),
+      this.prisma.guarantor.deleteMany({ where: { caseId: id } }),
+      ...(dto.guarantors ?? []).map((g) => this.prisma.guarantor.create({ data: { caseId: id, ...g } })),
       this.prisma.collateral.deleteMany({ where: { caseId: id } }),
       ...dto.collaterals.map((c) =>
         this.prisma.collateral.create({ data: { caseId: id, ...this.collateralCreate(c) } }),

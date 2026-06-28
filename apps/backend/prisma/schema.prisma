@@ -91,6 +91,7 @@ model CreditCase {
   createdById  String
 
   borrower     Borrower?
+  guarantors   Guarantor[]
   collaterals  Collateral[]
   valuationAct ValuationAct?
   documents    Document[]
@@ -116,6 +117,21 @@ model Borrower {
   birthDate      DateTime?
   address        String?  @db.Text
   phone          String?
+}
+
+// Kafil (guarantor) — a case may have several.
+model Guarantor {
+  id             String   @id @default(cuid())
+  case           CreditCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId         String
+  fullName       String
+  passportSeries String?
+  passportNumber String?
+  pinfl          String?
+  phone          String?
+  relation       String? // qarz oluvchiga munosabati
+
+  @@index([caseId])
 }
 
 // Unified collateral — a case can have several (e.g. 2 flats + 1 car).

@@ -73,6 +73,16 @@ export interface BorrowerDto {
   phone: string | null;
 }
 
+export interface GuarantorDto {
+  id?: string;
+  fullName: string;
+  passportSeries: string | null;
+  passportNumber: string | null;
+  pinfl: string | null;
+  phone: string | null;
+  relation: string | null;
+}
+
 export interface DocumentDto {
   id: string;
   type: DocumentType;
@@ -149,6 +159,7 @@ export interface CreditCaseDto {
   branch: BranchDto | null;
   createdByName: string;
   borrower: BorrowerDto | null;
+  guarantors: GuarantorDto[];
   collaterals: CollateralDto[];
   documents: DocumentDto[];
   events: WorkflowEventDto[];
@@ -172,6 +183,7 @@ export interface UpsertCasePayload {
   amount: number | null;
   termMonths: number | null;
   borrower: BorrowerDto;
+  guarantors: GuarantorDto[];
   collaterals: CollateralDto[];
 }
 

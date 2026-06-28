@@ -198,6 +198,22 @@ function Detail({ c }: { c: CreditCaseDto }) {
         </dl>
       </div>
 
+      {c.guarantors.length > 0 && (
+        <div className="border-t border-slate-100 pt-4">
+          <h2 className="mb-2 font-semibold">Kafillar ({c.guarantors.length})</h2>
+          <div className="space-y-1.5">
+            {c.guarantors.map((g, i) => (
+              <div key={g.id ?? i} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <span className="font-medium">{g.fullName}</span>
+                {g.relation && <span className="text-muted">· {g.relation}</span>}
+                {g.passportNumber && <span className="nums text-muted">· {g.passportNumber}</span>}
+                {g.phone && <span className="nums text-muted">· {g.phone}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3 border-t border-slate-100 pt-4">
         <h2 className="font-semibold">Garovlar ({c.collaterals.length})</h2>
         {c.collaterals.map((col, i) => {

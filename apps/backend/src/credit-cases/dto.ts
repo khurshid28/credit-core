@@ -23,6 +23,15 @@ export class BorrowerInput {
   @IsOptional() @IsString() phone?: string | null;
 }
 
+export class GuarantorInput {
+  @IsString() @MinLength(1) fullName!: string;
+  @IsOptional() @IsString() passportSeries?: string | null;
+  @IsOptional() @IsString() passportNumber?: string | null;
+  @IsOptional() @IsString() pinfl?: string | null;
+  @IsOptional() @IsString() phone?: string | null;
+  @IsOptional() @IsString() relation?: string | null;
+}
+
 export class CollateralOwnerInput {
   @IsString() @MinLength(1) fullName!: string;
   @IsOptional() @IsString() passportSeries?: string | null;
@@ -74,6 +83,12 @@ export class UpsertCaseDto {
   @ValidateNested()
   @Type(() => BorrowerInput)
   borrower!: BorrowerInput;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GuarantorInput)
+  guarantors?: GuarantorInput[];
 
   @IsArray()
   @ArrayMinSize(1)

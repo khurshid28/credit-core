@@ -50,6 +50,9 @@ export const Application = make(Iso.ClipboardText);
 export const House = make(Iso.House2 ?? Iso.House ?? Iso.Home2);
 export const Car = make(Iso.Car);
 export const ArrowRight = make(Iso.ArrowRight);
+export const Calculator = make(Iso.Calculator);
+export const Messages = make(Iso.Messages2 ?? Iso.Message ?? Iso.Sms);
+export const Buildings = make(Iso.Buildings2 ?? Iso.Building);
 
 // Aliases matching prior (lucide) names so call sites need no JSX changes.
 export const CheckCircle2 = Check;

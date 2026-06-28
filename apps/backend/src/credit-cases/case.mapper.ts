@@ -5,6 +5,7 @@ export const caseInclude = {
   branch: true,
   createdBy: true,
   borrower: true,
+  guarantors: { orderBy: { id: 'asc' } },
   collaterals: { include: { owners: true }, orderBy: { createdAt: 'asc' } },
   documents: { include: { uploadedBy: true }, orderBy: { createdAt: 'asc' } },
   events: { include: { actor: true }, orderBy: { createdAt: 'asc' } },
@@ -78,6 +79,15 @@ export function toCaseDto(c: CaseWithRelations): CreditCaseDto {
           phone: c.borrower.phone,
         }
       : null,
+    guarantors: c.guarantors.map((g) => ({
+      id: g.id,
+      fullName: g.fullName,
+      passportSeries: g.passportSeries,
+      passportNumber: g.passportNumber,
+      pinfl: g.pinfl,
+      phone: g.phone,
+      relation: g.relation,
+    })),
     collaterals: c.collaterals.map(toCollateral),
     documents: c.documents.map((d) => ({
       id: d.id,

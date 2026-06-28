@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
-import { BarChart3, FilePlus2, LayoutGrid, Settings, Bell as BellIcon } from './lib/icons';
+import { BarChart3, FilePlus2, LayoutGrid, Calculator, Messages, Building, UserAdd, Bell as BellIcon } from './lib/icons';
 import { Role, ROLE_LABEL } from '@credit-core/shared';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Splash } from './components/Splash';
@@ -21,18 +21,26 @@ import { Button } from './components/primitives';
 import { Dashboard } from './pages/Dashboard';
 import { CaseForm } from './pages/CaseForm';
 import { CaseView } from './pages/CaseView';
-import { AdminPage } from './pages/AdminPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { CreditCalculator } from './pages/CreditCalculator';
+import { ChatsPage } from './pages/ChatsPage';
+import { BranchesPage } from './pages/BranchesPage';
+import { UsersPage } from './pages/UsersPage';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 function navFor(role: Role): NavItem[] {
   const base: NavItem[] = [{ to: '/', label: 'Arizalar', icon: LayoutGrid }];
   if (role === Role.OPERATOR) base.push({ to: '/cases/new', label: 'Yangi ariza', icon: FilePlus2 });
+  base.push({ to: '/calculator', label: 'Kalkulyator', icon: Calculator });
+  base.push({ to: '/chats', label: 'Chatlar', icon: Messages, badgeKey: 'unread' });
   base.push({ to: '/analytics', label: 'Monitoring', icon: BarChart3 });
-  base.push({ to: '/notifications', label: 'Bildirishnomalar', icon: BellIcon });
-  if (role === Role.ADMIN) base.push({ to: '/admin', label: 'Boshqaruv', icon: Settings });
+  base.push({ to: '/notifications', label: 'Bildirishnomalar', icon: BellIcon, badgeKey: 'unread' });
+  if (role === Role.ADMIN) {
+    base.push({ to: '/branches', label: 'Filiallar', icon: Building });
+    base.push({ to: '/users', label: 'Foydalanuvchilar', icon: UserAdd });
+  }
   return base;
 }
 
@@ -58,9 +66,12 @@ function Shell({ role, title }: { role: Role; title: string }) {
         {role === Role.OPERATOR && <Route path="/cases/new" element={<CaseForm />} />}
         {role === Role.OPERATOR && <Route path="/cases/:id/edit" element={<CaseForm />} />}
         <Route path="/cases/:id" element={<CaseView />} />
+        <Route path="/calculator" element={<CreditCalculator />} />
+        <Route path="/chats" element={<ChatsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
-        {role === Role.ADMIN && <Route path="/admin" element={<AdminPage />} />}
+        {role === Role.ADMIN && <Route path="/branches" element={<BranchesPage />} />}
+        {role === Role.ADMIN && <Route path="/users" element={<UsersPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
