@@ -7,6 +7,10 @@ export const caseInclude = {
   borrower: true,
   guarantors: { orderBy: { id: 'asc' } },
   collaterals: { include: { owners: true }, orderBy: { createdAt: 'asc' } },
+  employment: true,
+  affordability: true,
+  creditHistory: true,
+  creditLine: { include: { insurance: true, tranches: { orderBy: { trancheNo: 'asc' } } } },
   documents: { include: { uploadedBy: true }, orderBy: { createdAt: 'asc' } },
   events: { include: { actor: true }, orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.CreditCaseInclude;
@@ -54,6 +58,31 @@ function toCollateral(c: CollateralRow): CollateralDto {
   };
 }
 
+const toEmployment = (e: CaseWithRelations['employment']) =>
+  e ? { employer: e.employer, employerAddress: e.employerAddress, sector: e.sector, sectorRiskCode: e.sectorRiskCode, position: e.position, employedSince: e.employedSince, experienceBand: e.experienceBand } : null;
+
+const toAffordability = (a: CaseWithRelations['affordability']) =>
+  a ? { mainActivityIncome: num(a.mainActivityIncome), secondaryIncome: num(a.secondaryIncome), familyIncome: num(a.familyIncome), otherIncome: num(a.otherIncome), utilitiesExpense: num(a.utilitiesExpense), familyExpense: num(a.familyExpense), otherExpense: num(a.otherExpense), existingCreditBurden: num(a.existingCreditBurden), newLoanPayment: num(a.newLoanPayment) } : null;
+
+const toCreditHistory = (h: CaseWithRelations['creditHistory']) =>
+  h ? { repaidLoansCount: h.repaidLoansCount, activeLoansCount: h.activeLoansCount, overdueSubstandardFlag: h.overdueSubstandardFlag, otherObligations: h.otherObligations, loansOver5MFlag: h.loansOver5MFlag, priorMfiPawnshopFlag: h.priorMfiPawnshopFlag, totalOutstandingDebt: num(h.totalOutstandingDebt), avgMonthlyPaymentExisting: num(h.avgMonthlyPaymentExisting), committeeProtocolRef: h.committeeProtocolRef, committeeDecisionDate: iso(h.committeeDecisionDate) } : null;
+
+function toCreditLine(l: CaseWithRelations['creditLine']) {
+  if (!l) return null;
+  const t = l.tranches[0] ?? null;
+  return {
+    lineNumber: l.lineNumber, loanType: l.loanType, amountAuto: num(l.amountAuto), amountPolis: num(l.amountPolis),
+    amountTotal: num(l.amountTotal), termMonths: l.termMonths, lineDate: iso(l.lineDate), lineMaturity: iso(l.lineMaturity),
+    interestRate: num(l.interestRate), penaltyRate: num(l.penaltyRate), orderNumber: l.orderNumber,
+    insurance: l.insurance
+      ? { insured: l.insurance.insured, company: l.insurance.company, genAgreementNo: l.insurance.genAgreementNo, genAgreementDate: iso(l.insurance.genAgreementDate), policyNo: l.insurance.policyNo, policyIssueDate: iso(l.insurance.policyIssueDate), policyTermMonths: l.insurance.policyTermMonths, policyExpiry: iso(l.insurance.policyExpiry), loanUnderPolicy: num(l.insurance.loanUnderPolicy), insuredSum: num(l.insurance.insuredSum), insuranceRate: num(l.insurance.insuranceRate), premium: num(l.insurance.premium) }
+      : null,
+    tranche: t
+      ? { trancheNo: t.trancheNo, applicationNo: t.applicationNo, applicationDate: iso(t.applicationDate), contractNo: t.contractNo, contractDate: iso(t.contractDate), principal: num(t.principal), termMonths: t.termMonths, maturity: iso(t.maturity), scheduleType: t.scheduleType, monthlyPayment: num(t.monthlyPayment), insurancePayment: num(t.insurancePayment) }
+      : null,
+  };
+}
+
 export function toCaseDto(c: CaseWithRelations): CreditCaseDto {
   return {
     id: c.id,
@@ -77,6 +106,29 @@ export function toCaseDto(c: CaseWithRelations): CreditCaseDto {
           birthDate: iso(c.borrower.birthDate),
           address: c.borrower.address,
           phone: c.borrower.phone,
+          gender: c.borrower.gender,
+          citizenship: c.borrower.citizenship,
+          placeOfBirth: c.borrower.placeOfBirth,
+          previousName: c.borrower.previousName,
+          inn: c.borrower.inn,
+          passportIssuer: c.borrower.passportIssuer,
+          passportIssueDate: iso(c.borrower.passportIssueDate),
+          passportExpiry: iso(c.borrower.passportExpiry),
+          regAddress: c.borrower.regAddress,
+          regLandmark: c.borrower.regLandmark,
+          regTenure: c.borrower.regTenure,
+          regMatchesActual: c.borrower.regMatchesActual,
+          actualAddress: c.borrower.actualAddress,
+          actualLandmark: c.borrower.actualLandmark,
+          actualTenure: c.borrower.actualTenure,
+          phones: (c.borrower.phones as string[] | null) ?? null,
+          maritalStatus: c.borrower.maritalStatus,
+          familySize: c.borrower.familySize,
+          childrenCount: c.borrower.childrenCount,
+          education: c.borrower.education,
+          residenceDuration: c.borrower.residenceDuration,
+          ownsHome: c.borrower.ownsHome,
+          depositsBand: c.borrower.depositsBand,
         }
       : null,
     guarantors: c.guarantors.map((g) => ({
@@ -89,6 +141,10 @@ export function toCaseDto(c: CaseWithRelations): CreditCaseDto {
       relation: g.relation,
     })),
     collaterals: c.collaterals.map(toCollateral),
+    employment: toEmployment(c.employment),
+    affordability: toAffordability(c.affordability),
+    creditLine: toCreditLine(c.creditLine),
+    creditHistory: toCreditHistory(c.creditHistory),
     documents: c.documents.filter((d) => d.type !== 'CHAT').map((d) => ({
       id: d.id,
       type: d.type,

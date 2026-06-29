@@ -3,6 +3,7 @@ import type {
   AppConfigDto,
   AuthUser,
   BranchDto,
+  CaseSectionPayload,
   CaseUnread,
   CreditCaseDto,
   CreditCaseListItem,
@@ -106,6 +107,14 @@ export const api = {
   },
   async updateCase(id: string, payload: UpsertCasePayload): Promise<CreditCaseDto> {
     const { data } = await http.put<CreditCaseDto>(`/cases/${id}`, payload);
+    return data;
+  },
+  async saveCaseSection(id: string, payload: CaseSectionPayload): Promise<CreditCaseDto> {
+    const { data } = await http.patch<CreditCaseDto>(`/cases/${id}/section`, payload);
+    return data;
+  },
+  async setCaseRate(id: string, interestRate: number): Promise<CreditCaseDto> {
+    const { data } = await http.patch<CreditCaseDto>(`/cases/${id}/rate`, { interestRate });
     return data;
   },
   async transition(id: string, payload: TransitionPayload): Promise<CreditCaseDto> {

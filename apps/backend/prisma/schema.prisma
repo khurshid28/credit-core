@@ -176,6 +176,8 @@ model AppConfig {
   bankRate      Float    @default(0.28) // bank yillik foiz stavkasi
   taxRate       Float    @default(0.12) // daromad solig'i
   nplRate       Float    @default(0.05) // NPL (to'lanmaslik) foizi
+  minRate       Float    @default(0.55) // klient kredit yillik foizi — pastki chegara
+  maxRate       Float    @default(0.60) // yuqori chegara (moderator shu gacha ko'taradi)
   updatedAt     DateTime @updatedAt
 }
 

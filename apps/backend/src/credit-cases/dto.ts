@@ -2,7 +2,9 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -21,6 +23,29 @@ export class BorrowerInput {
   @IsOptional() @IsString() birthDate?: string | null;
   @IsOptional() @IsString() address?: string | null;
   @IsOptional() @IsString() phone?: string | null;
+  @IsOptional() @IsIn(['MALE', 'FEMALE']) gender?: 'MALE' | 'FEMALE' | null;
+  @IsOptional() @IsString() citizenship?: string | null;
+  @IsOptional() @IsString() placeOfBirth?: string | null;
+  @IsOptional() @IsString() previousName?: string | null;
+  @IsOptional() @IsString() inn?: string | null;
+  @IsOptional() @IsString() passportIssuer?: string | null;
+  @IsOptional() @IsString() passportIssueDate?: string | null;
+  @IsOptional() @IsString() passportExpiry?: string | null;
+  @IsOptional() @IsString() regAddress?: string | null;
+  @IsOptional() @IsString() regLandmark?: string | null;
+  @IsOptional() @IsString() regTenure?: string | null;
+  @IsOptional() @IsBoolean() regMatchesActual?: boolean | null;
+  @IsOptional() @IsString() actualAddress?: string | null;
+  @IsOptional() @IsString() actualLandmark?: string | null;
+  @IsOptional() @IsString() actualTenure?: string | null;
+  @IsOptional() @IsArray() @IsString({ each: true }) phones?: string[] | null;
+  @IsOptional() @IsString() maritalStatus?: string | null;
+  @IsOptional() @IsInt() familySize?: number | null;
+  @IsOptional() @IsInt() childrenCount?: number | null;
+  @IsOptional() @IsString() education?: string | null;
+  @IsOptional() @IsString() residenceDuration?: string | null;
+  @IsOptional() @IsString() ownsHome?: string | null;
+  @IsOptional() @IsString() depositsBand?: string | null;
 }
 
 export class GuarantorInput {
@@ -76,6 +101,86 @@ export class CollateralInput {
   owners?: CollateralOwnerInput[];
 }
 
+export class EmploymentInput {
+  @IsOptional() @IsString() employer?: string | null;
+  @IsOptional() @IsString() employerAddress?: string | null;
+  @IsOptional() @IsString() sector?: string | null;
+  @IsOptional() @IsInt() sectorRiskCode?: number | null;
+  @IsOptional() @IsString() position?: string | null;
+  @IsOptional() @IsString() employedSince?: string | null;
+  @IsOptional() @IsString() experienceBand?: string | null;
+}
+
+export class AffordabilityInput {
+  @IsOptional() @IsNumber() mainActivityIncome?: number | null;
+  @IsOptional() @IsNumber() secondaryIncome?: number | null;
+  @IsOptional() @IsNumber() familyIncome?: number | null;
+  @IsOptional() @IsNumber() otherIncome?: number | null;
+  @IsOptional() @IsNumber() utilitiesExpense?: number | null;
+  @IsOptional() @IsNumber() familyExpense?: number | null;
+  @IsOptional() @IsNumber() otherExpense?: number | null;
+  @IsOptional() @IsNumber() existingCreditBurden?: number | null;
+  @IsOptional() @IsNumber() newLoanPayment?: number | null;
+}
+
+export class InsuranceInput {
+  @IsOptional() @IsBoolean() insured?: boolean;
+  @IsOptional() @IsString() company?: string | null;
+  @IsOptional() @IsString() genAgreementNo?: string | null;
+  @IsOptional() @IsString() genAgreementDate?: string | null;
+  @IsOptional() @IsString() policyNo?: string | null;
+  @IsOptional() @IsString() policyIssueDate?: string | null;
+  @IsOptional() @IsInt() policyTermMonths?: number | null;
+  @IsOptional() @IsString() policyExpiry?: string | null;
+  @IsOptional() @IsNumber() loanUnderPolicy?: number | null;
+  @IsOptional() @IsNumber() insuredSum?: number | null;
+  @IsOptional() @IsNumber() insuranceRate?: number | null;
+  @IsOptional() @IsNumber() premium?: number | null;
+}
+
+export class TrancheInput {
+  @IsOptional() @IsInt() trancheNo?: number | null;
+  @IsOptional() @IsString() applicationNo?: string | null;
+  @IsOptional() @IsString() applicationDate?: string | null;
+  @IsOptional() @IsString() contractNo?: string | null;
+  @IsOptional() @IsString() contractDate?: string | null;
+  @IsOptional() @IsNumber() principal?: number | null;
+  @IsOptional() @IsInt() termMonths?: number | null;
+  @IsOptional() @IsString() maturity?: string | null;
+  @IsOptional() @IsIn(['ANNUITY', 'DIFFERENTIATED']) scheduleType?: 'ANNUITY' | 'DIFFERENTIATED' | null;
+  @IsOptional() @IsNumber() monthlyPayment?: number | null;
+  @IsOptional() @IsNumber() insurancePayment?: number | null;
+}
+
+export class CreditLineInput {
+  @IsOptional() @IsString() lineNumber?: string | null;
+  @IsOptional() @IsIn(['MICROLOAN', 'MICROCREDIT']) loanType?: 'MICROLOAN' | 'MICROCREDIT' | null;
+  @IsOptional() @IsNumber() amountAuto?: number | null;
+  @IsOptional() @IsNumber() amountPolis?: number | null;
+  @IsOptional() @IsNumber() amountTotal?: number | null;
+  @IsOptional() @IsInt() termMonths?: number | null;
+  @IsOptional() @IsString() lineDate?: string | null;
+  @IsOptional() @IsString() lineMaturity?: string | null;
+  @IsOptional() @IsNumber() interestRate?: number | null;
+  @IsOptional() @IsNumber() penaltyRate?: number | null;
+  @IsOptional() @IsString() orderNumber?: string | null;
+  @IsOptional() @ValidateNested() @Type(() => InsuranceInput) insurance?: InsuranceInput | null;
+  @IsOptional() @ValidateNested() @Type(() => TrancheInput) tranche?: TrancheInput | null;
+}
+
+export class CreditHistoryInput {
+  @IsOptional() @IsInt() repaidLoansCount?: number | null;
+  @IsOptional() @IsInt() activeLoansCount?: number | null;
+  @IsOptional() @IsInt() overdueSubstandardFlag?: number | null;
+  @IsOptional() @IsInt() otherObligations?: number | null;
+  @IsOptional() @IsString() loansOver5MFlag?: string | null;
+  @IsOptional() @IsString() priorMfiPawnshopFlag?: string | null;
+  @IsOptional() @IsNumber() totalOutstandingDebt?: number | null;
+  @IsOptional() @IsNumber() avgMonthlyPaymentExisting?: number | null;
+  @IsOptional() @IsString() committeeProtocolRef?: string | null;
+  @IsOptional() @IsString() committeeDecisionDate?: string | null;
+}
+
 export class UpsertCaseDto {
   @IsOptional() @IsNumber() @Min(0) amount?: number | null;
   @IsOptional() @IsInt() @Min(1) termMonths?: number | null;
@@ -95,6 +200,11 @@ export class UpsertCaseDto {
   @ValidateNested({ each: true })
   @Type(() => CollateralInput)
   collaterals!: CollateralInput[];
+
+  @IsOptional() @ValidateNested() @Type(() => EmploymentInput) employment?: EmploymentInput | null;
+  @IsOptional() @ValidateNested() @Type(() => AffordabilityInput) affordability?: AffordabilityInput | null;
+  @IsOptional() @ValidateNested() @Type(() => CreditLineInput) creditLine?: CreditLineInput | null;
+  @IsOptional() @ValidateNested() @Type(() => CreditHistoryInput) creditHistory?: CreditHistoryInput | null;
 }
 
 export class TransitionDto {
@@ -104,4 +214,15 @@ export class TransitionDto {
 
 export class SetKatmPriceDto {
   @IsNumber() @Min(0) katmPrice!: number;
+}
+
+export class SetRateDto {
+  @IsNumber() @Min(0) interestRate!: number;
+}
+
+export class CaseSectionDto {
+  @IsIn(['borrower', 'employment', 'affordability', 'creditLine', 'creditHistory'])
+  section!: 'borrower' | 'employment' | 'affordability' | 'creditLine' | 'creditHistory';
+
+  @ValidateNested() @Type(() => UpsertCaseDto) data!: UpsertCaseDto;
 }

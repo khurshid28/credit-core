@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { Role } from '@credit-core/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -7,7 +7,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
 import { CreditCasesService } from './credit-cases.service';
 import { exportCasesListToExcel } from '../output/excel-export.util';
-import { SetKatmPriceDto, TransitionDto, UpsertCaseDto } from './dto';
+import { CaseSectionDto, SetKatmPriceDto, SetRateDto, TransitionDto, UpsertCaseDto } from './dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('cases')
@@ -82,5 +82,19 @@ export class CreditCasesController {
   @Put(':id/katm-price')
   setKatmPrice(@Param('id') id: string, @Body() dto: SetKatmPriceDto) {
     return this.service.setKatmPrice(id, dto.katmPrice);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.OPERATOR, Role.ADMIN)
+  @Patch(':id/section')
+  saveSection(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() dto: CaseSectionDto) {
+    return this.service.saveSection(id, user, dto);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.MODERATOR, Role.ADMIN)
+  @Patch(':id/rate')
+  setRate(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() dto: SetRateDto) {
+    return this.service.setRate(id, user, dto.interestRate);
   }
 }

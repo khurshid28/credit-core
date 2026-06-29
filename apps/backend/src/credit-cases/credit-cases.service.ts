@@ -5,7 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RequestUser } from '../auth/current-user.decorator';
 import { WorkflowService } from './workflow.service';
 import { caseInclude, toCaseDto, toListItem } from './case.mapper';
-import { CollateralInput, TransitionDto, UpsertCaseDto } from './dto';
+import {
+  AffordabilityInput, BorrowerInput, CaseSectionDto, CollateralInput, CreditHistoryInput, CreditLineInput,
+  EmploymentInput, TransitionDto, UpsertCaseDto,
+} from './dto';
+import { isRateInBounds } from './rate.util';
 
 const parseDate = (s?: string | null): Date | null => (s ? new Date(s) : null);
 
@@ -52,6 +56,43 @@ export class CreditCasesService {
     };
   }
 
+  private creditLineNested(l: CreditLineInput) {
+    const t = l.tranche ?? null;
+    const ins = l.insurance ?? null;
+    return {
+      lineNumber: l.lineNumber ?? null, loanType: l.loanType ?? null,
+      amountAuto: l.amountAuto ?? null, amountPolis: l.amountPolis ?? null, amountTotal: l.amountTotal ?? null,
+      termMonths: l.termMonths ?? null, lineDate: parseDate(l.lineDate), lineMaturity: parseDate(l.lineMaturity),
+      interestRate: l.interestRate ?? null, penaltyRate: l.penaltyRate ?? null, orderNumber: l.orderNumber ?? null,
+      ...(ins ? { insurance: { create: { insured: ins.insured ?? false, company: ins.company ?? null, genAgreementNo: ins.genAgreementNo ?? null, genAgreementDate: parseDate(ins.genAgreementDate), policyNo: ins.policyNo ?? null, policyIssueDate: parseDate(ins.policyIssueDate), policyTermMonths: ins.policyTermMonths ?? null, policyExpiry: parseDate(ins.policyExpiry), loanUnderPolicy: ins.loanUnderPolicy ?? null, insuredSum: ins.insuredSum ?? null, insuranceRate: ins.insuranceRate ?? null, premium: ins.premium ?? null } } } : {}),
+      ...(t ? { tranches: { create: [{ trancheNo: t.trancheNo ?? 1, applicationNo: t.applicationNo ?? null, applicationDate: parseDate(t.applicationDate), contractNo: t.contractNo ?? null, contractDate: parseDate(t.contractDate), principal: t.principal ?? null, termMonths: t.termMonths ?? null, maturity: parseDate(t.maturity), scheduleType: t.scheduleType ?? null, monthlyPayment: t.monthlyPayment ?? null, insurancePayment: t.insurancePayment ?? null }] } } : {}),
+    };
+  }
+  private borrowerData(b: BorrowerInput) {
+    return {
+      fullName: b.fullName, passportSeries: b.passportSeries ?? null, passportNumber: b.passportNumber ?? null,
+      pinfl: b.pinfl ?? null, birthDate: parseDate(b.birthDate), address: b.address ?? null, phone: b.phone ?? null,
+      gender: b.gender ?? null, citizenship: b.citizenship ?? null, placeOfBirth: b.placeOfBirth ?? null,
+      previousName: b.previousName ?? null, inn: b.inn ?? null, passportIssuer: b.passportIssuer ?? null,
+      passportIssueDate: parseDate(b.passportIssueDate), passportExpiry: parseDate(b.passportExpiry),
+      regAddress: b.regAddress ?? null, regLandmark: b.regLandmark ?? null, regTenure: b.regTenure ?? null,
+      regMatchesActual: b.regMatchesActual ?? null, actualAddress: b.actualAddress ?? null,
+      actualLandmark: b.actualLandmark ?? null, actualTenure: b.actualTenure ?? null,
+      phones: b.phones ?? undefined, maritalStatus: b.maritalStatus ?? null, familySize: b.familySize ?? null,
+      childrenCount: b.childrenCount ?? null, education: b.education ?? null, residenceDuration: b.residenceDuration ?? null,
+      ownsHome: b.ownsHome ?? null, depositsBand: b.depositsBand ?? null,
+    };
+  }
+  private employmentData(e: EmploymentInput) {
+    return { employer: e.employer ?? null, employerAddress: e.employerAddress ?? null, sector: e.sector ?? null, sectorRiskCode: e.sectorRiskCode ?? null, position: e.position ?? null, employedSince: e.employedSince ?? null, experienceBand: e.experienceBand ?? null };
+  }
+  private affordabilityData(a: AffordabilityInput) {
+    return { mainActivityIncome: a.mainActivityIncome ?? null, secondaryIncome: a.secondaryIncome ?? null, familyIncome: a.familyIncome ?? null, otherIncome: a.otherIncome ?? null, utilitiesExpense: a.utilitiesExpense ?? null, familyExpense: a.familyExpense ?? null, otherExpense: a.otherExpense ?? null, existingCreditBurden: a.existingCreditBurden ?? null, newLoanPayment: a.newLoanPayment ?? null };
+  }
+  private creditHistoryData(h: CreditHistoryInput) {
+    return { repaidLoansCount: h.repaidLoansCount ?? null, activeLoansCount: h.activeLoansCount ?? null, overdueSubstandardFlag: h.overdueSubstandardFlag ?? null, otherObligations: h.otherObligations ?? null, loansOver5MFlag: h.loansOver5MFlag ?? null, priorMfiPawnshopFlag: h.priorMfiPawnshopFlag ?? null, totalOutstandingDebt: h.totalOutstandingDebt ?? null, avgMonthlyPaymentExisting: h.avgMonthlyPaymentExisting ?? null, committeeProtocolRef: h.committeeProtocolRef ?? null, committeeDecisionDate: parseDate(h.committeeDecisionDate) };
+  }
+
   async createCase(user: RequestUser, dto: UpsertCaseDto) {
     const branch = user.branchId
       ? await this.prisma.branch.findUnique({ where: { id: user.branchId } })
@@ -68,9 +109,13 @@ export class CreditCasesService {
         termMonths: dto.termMonths ?? null,
         branchId: user.branchId,
         createdById: user.id,
-        borrower: { create: { ...dto.borrower, birthDate: parseDate(dto.borrower.birthDate) } },
+        borrower: { create: this.borrowerData(dto.borrower) },
         guarantors: { create: (dto.guarantors ?? []).map((g) => ({ ...g })) },
         collaterals: { create: dto.collaterals.map((c) => this.collateralCreate(c)) },
+        ...(dto.employment ? { employment: { create: this.employmentData(dto.employment) } } : {}),
+        ...(dto.affordability ? { affordability: { create: this.affordabilityData(dto.affordability) } } : {}),
+        ...(dto.creditHistory ? { creditHistory: { create: this.creditHistoryData(dto.creditHistory) } } : {}),
+        ...(dto.creditLine ? { creditLine: { create: this.creditLineNested(dto.creditLine) } } : {}),
       },
       include: caseInclude,
     });
@@ -98,8 +143,8 @@ export class CreditCasesService {
       }),
       this.prisma.borrower.upsert({
         where: { caseId: id },
-        create: { caseId: id, ...dto.borrower, birthDate: parseDate(dto.borrower.birthDate) },
-        update: { ...dto.borrower, birthDate: parseDate(dto.borrower.birthDate) },
+        create: { caseId: id, ...this.borrowerData(dto.borrower) },
+        update: this.borrowerData(dto.borrower),
       }),
       this.prisma.guarantor.deleteMany({ where: { caseId: id } }),
       ...(dto.guarantors ?? []).map((g) => this.prisma.guarantor.create({ data: { caseId: id, ...g } })),
@@ -107,6 +152,10 @@ export class CreditCasesService {
       ...dto.collaterals.map((c) =>
         this.prisma.collateral.create({ data: { caseId: id, ...this.collateralCreate(c) } }),
       ),
+      ...(dto.employment ? [this.prisma.employment.upsert({ where: { caseId: id }, create: { caseId: id, ...this.employmentData(dto.employment) }, update: this.employmentData(dto.employment) })] : []),
+      ...(dto.affordability ? [this.prisma.affordability.upsert({ where: { caseId: id }, create: { caseId: id, ...this.affordabilityData(dto.affordability) }, update: this.affordabilityData(dto.affordability) })] : []),
+      ...(dto.creditHistory ? [this.prisma.creditHistory.upsert({ where: { caseId: id }, create: { caseId: id, ...this.creditHistoryData(dto.creditHistory) }, update: this.creditHistoryData(dto.creditHistory) })] : []),
+      ...(dto.creditLine ? [this.prisma.creditLine.deleteMany({ where: { caseId: id } }), this.prisma.creditLine.create({ data: { caseId: id, ...this.creditLineNested(dto.creditLine) } })] : []),
     ]);
 
     return this.getOne(id);
@@ -289,6 +338,39 @@ export class CreditCasesService {
 
   async setKatmPrice(id: string, katmPrice: number) {
     await this.prisma.creditCase.update({ where: { id }, data: { katmPrice } });
+    return this.getOne(id);
+  }
+
+  /** Persist a single wizard step (autosave). Writes only the named section. */
+  async saveSection(id: string, user: RequestUser, dto: CaseSectionDto) {
+    const base = dto.data;
+    const masked: UpsertCaseDto = {
+      amount: base.amount, termMonths: base.termMonths,
+      borrower: base.borrower, guarantors: base.guarantors, collaterals: base.collaterals,
+      employment: dto.section === 'employment' ? base.employment : undefined,
+      affordability: dto.section === 'affordability' ? base.affordability : undefined,
+      creditLine: dto.section === 'creditLine' ? base.creditLine : undefined,
+      creditHistory: dto.section === 'creditHistory' ? base.creditHistory : undefined,
+    };
+    return this.updateCase(id, user, masked);
+  }
+
+  /** Moderator/admin raise the per-case lending rate within the admin [min,max] bounds (MODERATION only). */
+  async setRate(id: string, user: RequestUser, interestRate: number) {
+    if (user.role !== Role.MODERATOR && user.role !== Role.ADMIN) {
+      throw new ForbiddenException('Foizni faqat moderator yoki admin o‘zgartiradi');
+    }
+    const c = await this.prisma.creditCase.findUnique({ where: { id }, include: { creditLine: true } });
+    if (!c) throw new NotFoundException('Ariza topilmadi');
+    if (c.status !== CaseStatus.MODERATION) throw new ForbiddenException('Faqat moderatsiya bosqichida foizni o‘zgartirish mumkin');
+    const cfg = await this.prisma.appConfig.findUnique({ where: { id: 'default' } });
+    const min = cfg?.minRate ?? 0.55;
+    const max = cfg?.maxRate ?? 0.6;
+    if (!isRateInBounds(interestRate, min, max)) {
+      throw new ForbiddenException(`Foiz ${Math.round(min * 100)}% va ${Math.round(max * 100)}% oralig‘ida bo‘lishi kerak`);
+    }
+    if (!c.creditLine) throw new NotFoundException('Kredit liniyasi to‘ldirilmagan');
+    await this.prisma.creditLine.update({ where: { caseId: id }, data: { interestRate } });
     return this.getOne(id);
   }
 }

@@ -81,6 +81,109 @@ export interface BorrowerDto {
   birthDate: string | null;
   address: string | null;
   phone: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  citizenship?: string | null;
+  placeOfBirth?: string | null;
+  previousName?: string | null;
+  inn?: string | null;
+  passportIssuer?: string | null;
+  passportIssueDate?: string | null;
+  passportExpiry?: string | null;
+  regAddress?: string | null;
+  regLandmark?: string | null;
+  regTenure?: string | null;
+  regMatchesActual?: boolean | null;
+  actualAddress?: string | null;
+  actualLandmark?: string | null;
+  actualTenure?: string | null;
+  phones?: string[] | null;
+  maritalStatus?: string | null;
+  familySize?: number | null;
+  childrenCount?: number | null;
+  education?: string | null;
+  residenceDuration?: string | null;
+  ownsHome?: string | null;
+  depositsBand?: string | null;
+}
+
+export interface EmploymentDto {
+  employer: string | null;
+  employerAddress: string | null;
+  sector: string | null;
+  sectorRiskCode: number | null;
+  position: string | null;
+  employedSince: string | null;
+  experienceBand: string | null;
+}
+
+export interface AffordabilityDto {
+  mainActivityIncome: number | null;
+  secondaryIncome: number | null;
+  familyIncome: number | null;
+  otherIncome: number | null;
+  utilitiesExpense: number | null;
+  familyExpense: number | null;
+  otherExpense: number | null;
+  existingCreditBurden: number | null;
+  newLoanPayment: number | null;
+}
+
+export interface InsurancePolicyDto {
+  insured: boolean;
+  company: string | null;
+  genAgreementNo: string | null;
+  genAgreementDate: string | null;
+  policyNo: string | null;
+  policyIssueDate: string | null;
+  policyTermMonths: number | null;
+  policyExpiry: string | null;
+  loanUnderPolicy: number | null;
+  insuredSum: number | null;
+  insuranceRate: number | null;
+  premium: number | null;
+}
+
+export interface TrancheDto {
+  trancheNo: number | null;
+  applicationNo: string | null;
+  applicationDate: string | null;
+  contractNo: string | null;
+  contractDate: string | null;
+  principal: number | null;
+  termMonths: number | null;
+  maturity: string | null;
+  scheduleType: 'ANNUITY' | 'DIFFERENTIATED' | null;
+  monthlyPayment: number | null;
+  insurancePayment: number | null;
+}
+
+export interface CreditLineDto {
+  lineNumber: string | null;
+  loanType: 'MICROLOAN' | 'MICROCREDIT' | null;
+  amountAuto: number | null;
+  amountPolis: number | null;
+  amountTotal: number | null;
+  termMonths: number | null;
+  lineDate: string | null;
+  lineMaturity: string | null;
+  interestRate: number | null; // fraction
+  penaltyRate: number | null;  // fraction
+  orderNumber: string | null;
+  insurance: InsurancePolicyDto | null;
+  tranche: TrancheDto | null;
+}
+
+export interface CreditHistoryDto {
+  repaidLoansCount: number | null;
+  activeLoansCount: number | null;
+  overdueSubstandardFlag: number | null;
+  otherObligations: number | null;
+  loansOver5MFlag: string | null;
+  priorMfiPawnshopFlag: string | null;
+  totalOutstandingDebt: number | null;
+  avgMonthlyPaymentExisting: number | null;
+  committeeProtocolRef: string | null;
+  committeeDecisionDate: string | null;
 }
 
 export interface GuarantorDto {
@@ -198,6 +301,10 @@ export interface CreditCaseDto {
   borrower: BorrowerDto | null;
   guarantors: GuarantorDto[];
   collaterals: CollateralDto[];
+  employment: EmploymentDto | null;
+  affordability: AffordabilityDto | null;
+  creditLine: CreditLineDto | null;
+  creditHistory: CreditHistoryDto | null;
   documents: DocumentDto[];
   events: WorkflowEventDto[];
   /** When the case entered its current step (null for DRAFT / terminal). */
@@ -241,6 +348,8 @@ export interface AppConfigDto {
   bankRate: number;
   taxRate: number;
   nplRate: number;
+  minRate: number; // lending rate floor (fraction, default 0.55)
+  maxRate: number; // lending rate ceiling (fraction, default 0.60)
 }
 
 /** Payload to create or update a case (manual form OR import-confirmed). */
@@ -250,6 +359,21 @@ export interface UpsertCasePayload {
   borrower: BorrowerDto;
   guarantors: GuarantorDto[];
   collaterals: CollateralDto[];
+  employment?: EmploymentDto | null;
+  affordability?: AffordabilityDto | null;
+  creditLine?: CreditLineDto | null;
+  creditHistory?: CreditHistoryDto | null;
+}
+
+export type CaseSectionKey = 'borrower' | 'employment' | 'affordability' | 'creditLine' | 'creditHistory';
+
+export interface CaseSectionPayload {
+  section: CaseSectionKey;
+  data: UpsertCasePayload;
+}
+
+export interface SetRatePayload {
+  interestRate: number; // fraction, within [minRate, maxRate]
 }
 
 export interface TransitionPayload {
