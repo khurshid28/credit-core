@@ -15,6 +15,16 @@ describe('WorkflowService', () => {
     expect(rule.to).toBe(CaseStatus.MODERATION);
   });
 
+  it('allows admin to submit a draft', () => {
+    const rule = svc.resolve({
+      currentStatus: CaseStatus.DRAFT,
+      role: Role.ADMIN,
+      decision: WorkflowDecision.SUBMIT,
+      documentTypes: [],
+    });
+    expect(rule.to).toBe(CaseStatus.MODERATION);
+  });
+
   it('rejects a wrong-role transition (403)', () => {
     expect(() =>
       svc.resolve({

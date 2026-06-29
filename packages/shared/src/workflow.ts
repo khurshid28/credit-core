@@ -17,8 +17,9 @@ export interface TransitionRule {
  * frontends to decide which action buttons to show.
  */
 export const TRANSITIONS: TransitionRule[] = [
-  // Operator submits a draft → moderation queue.
+  // Operator submits a draft → moderation queue. Admin may also submit a draft they created.
   { from: CaseStatus.DRAFT, to: CaseStatus.MODERATION, role: Role.OPERATOR, decision: WorkflowDecision.SUBMIT },
+  { from: CaseStatus.DRAFT, to: CaseStatus.MODERATION, role: Role.ADMIN, decision: WorkflowDecision.SUBMIT },
 
   // Moderator approves → director, or returns → draft.
   { from: CaseStatus.MODERATION, to: CaseStatus.DIRECTOR_REVIEW, role: Role.MODERATOR, decision: WorkflowDecision.APPROVE },
