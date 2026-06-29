@@ -1,0 +1,23 @@
+import { PrismaService } from '../../prisma/prisma.service';
+
+/** Load a case with all SP-1 relations needed to render documents. */
+export async function loadCaseForDocs(prisma: PrismaService, id: string) {
+  const c = await prisma.creditCase.findUnique({
+    where: { id },
+    include: {
+      branch: true,
+      borrower: true,
+      collaterals: { include: { owners: true } },
+      creditLine: { include: { tranches: { orderBy: { trancheNo: 'asc' } }, insurance: true } },
+      affordability: true,
+      creditHistory: true,
+      scoring: { include: { factors: true } },
+      incomeCertificate: { include: { months: true } },
+    },
+  });
+  if (!c) return null;
+  const organization = await prisma.organization.findUnique({ where: { id: 'default' } });
+  return { ...c, organization };
+}
+
+export type CaseDocData = NonNullable<Awaited<ReturnType<typeof loadCaseForDocs>>>;

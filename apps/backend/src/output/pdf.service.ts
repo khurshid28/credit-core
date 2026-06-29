@@ -33,6 +33,18 @@ const fmtMoney = (n: number | null): string =>
 export class PdfService {
   private readonly printer = new PdfPrinter(fonts);
 
+  /** Render any pdfmake document definition to a Buffer. */
+  async render(def: TDocumentDefinitions): Promise<Buffer> {
+    const pdfDoc = this.printer.createPdfKitDocument(def);
+    return new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      pdfDoc.on('data', (d: Buffer) => chunks.push(d));
+      pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+      pdfDoc.on('error', reject);
+      pdfDoc.end();
+    });
+  }
+
   /** Build the "Garov baholash akti" (valuation act) PDF for a case. */
   async valuationAct(c: CreditCaseDto): Promise<Buffer> {
     const totalCollateral = c.collaterals.reduce((s, x) => s + (x.agreedValue ?? 0), 0);
