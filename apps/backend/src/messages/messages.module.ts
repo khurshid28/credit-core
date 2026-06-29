@@ -293,13 +293,10 @@ class MessagesController {
     const created = await this.prisma.message.create({
       data: { caseId: opts.caseId, senderId: opts.senderId, text: opts.text || null, toUserId: opts.toUserId, readBy: opts.senderId },
     });
-    // NOTE: chat attachments require Document.caseId; DM/saved (caseId null) are text-only
-    // in this slice. Making Document.caseId nullable is the follow-up to enable DM/saved files.
-    if (opts.files?.length && opts.caseId) {
-      const caseId = opts.caseId;
+    if (opts.files?.length) {
       await Promise.all(opts.files.map(async (file) => {
         const stored = await this.storage.save(file.buffer, file.originalname, file.mimetype, opts.dir);
-        await this.prisma.document.create({ data: { caseId, messageId: created.id, type: DocumentType.CHAT, fileName: stored.fileName, storagePath: stored.storagePath, mimeType: stored.mimeType, uploadedById: opts.senderId } });
+        await this.prisma.document.create({ data: { caseId: opts.caseId, messageId: created.id, type: DocumentType.CHAT, fileName: stored.fileName, storagePath: stored.storagePath, mimeType: stored.mimeType, uploadedById: opts.senderId } });
       }));
     }
     return created.id;

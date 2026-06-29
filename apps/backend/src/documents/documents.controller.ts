@@ -73,7 +73,7 @@ export class DocumentsController {
     const doc = await this.prisma.document.findUnique({ where: { id } });
     if (!doc) throw new NotFoundException('Hujjat topilmadi');
     if (doc.uploadedById !== user.id && user.role !== Role.ADMIN) throw new ForbiddenException('Bu hujjatni o‘zgartira olmaysiz');
-    const stored = await this.storage.save(file.buffer, file.originalname, file.mimetype, doc.caseId);
+    const stored = await this.storage.save(file.buffer, file.originalname, file.mimetype, doc.caseId ?? undefined);
     await this.storage.remove(doc.storagePath);
     return this.prisma.document.update({
       where: { id },

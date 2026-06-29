@@ -302,8 +302,8 @@ model ValuationAct {
 
 model Document {
   id           String       @id @default(cuid())
-  case         CreditCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  caseId       String
+  case         CreditCase?  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId       String?
   collateralId String? // optional: ties a photo/doc to a specific collateral
   title        String? // human label given on upload (per-collateral docs)
   description  String?      @db.Text // optional longer note
