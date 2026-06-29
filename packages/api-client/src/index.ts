@@ -62,6 +62,8 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+export type CaseDocumentMeta = { key: string; title: string; lang: 'uz' | 'ru'; available: boolean; watermarked: boolean };
+
 export const api = {
   async login(login: string, password: string): Promise<LoginResponse> {
     const { data } = await http.post<LoginResponse>('/auth/login', { login, password });
@@ -173,6 +175,16 @@ export const api = {
     const fd = new FormData();
     fd.append('file', file);
     await http.put(`/documents/${id}/file`, fd);
+  },
+
+  // ── Generated documents (SP-6) — list + render to PDF (bearer-auth blob) ──
+  async listCaseDocuments(caseId: string): Promise<CaseDocumentMeta[]> {
+    const { data } = await http.get<CaseDocumentMeta[]>(`/cases/${caseId}/documents`);
+    return data;
+  },
+  async caseDocumentBlob(caseId: string, key: string): Promise<Blob> {
+    const { data } = await http.get(`/cases/${caseId}/documents/${key}/pdf`, { responseType: 'blob' });
+    return data as Blob;
   },
 
   // ── Analytics / monitoring ──

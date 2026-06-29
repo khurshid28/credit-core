@@ -167,6 +167,8 @@ export function CaseView() {
             </Card>
           )}
 
+          <GeneratedDocsPanel caseId={c.id} number={c.number} status={c.status} />
+
           <Card>
             <h2 className="mb-1 font-semibold text-gray-800 dark:text-white">Umumiy hujjatlar</h2>
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Garovga bog‘lanmagan hujjatlar (garov hujjatlari yuqorida har bir garov ostida).</p>
@@ -360,7 +362,7 @@ export function CaseView() {
               <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Pauza muddati</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Eng ko‘pi {maxPauseDays} ish kuni</p>
             </div>
-            <div className="inline-flex h-11 items-center overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+            <div className="inline-flex h-11 items-center overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-white/5">
               <button
                 type="button"
                 aria-label="Kamaytirish"
@@ -712,6 +714,48 @@ function KatmInputs() {
       <Field label="Garov reestri holati">
         <Input value={pledge} onChange={(e) => setPledge(e.target.value)} placeholder="band emas / band" />
       </Field>
+    </Card>
+  );
+}
+
+/** Generated documents (SP-6) — view/download per document, watermarked until approval. */
+function GeneratedDocsPanel({ caseId, number, status }: { caseId: string; number: string; status: CaseStatus }) {
+  const { data: docs } = useQuery({
+    queryKey: ['case-docs', caseId],
+    queryFn: () => api.listCaseDocuments(caseId),
+    enabled: status !== CaseStatus.DRAFT,
+  });
+  const open = async (key: string) => {
+    const url = URL.createObjectURL(await api.caseDocumentBlob(caseId, key));
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+  return (
+    <Card>
+      <h2 className="mb-1 font-semibold text-gray-800 dark:text-white">Hujjatlar</h2>
+      <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Tizim tomonidan generatsiya qilingan hujjatlar.</p>
+      {status === CaseStatus.DRAFT ? (
+        <p className="text-sm text-gray-400 dark:text-gray-500">Ariza yuborilgach hujjatlar shakllanadi.</p>
+      ) : !docs?.length ? (
+        <p className="text-sm text-gray-400 dark:text-gray-500">Hujjat yo‘q</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+          {docs.map((d) => (
+            <li key={d.key} className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{d.title}</p>
+                {d.watermarked && (
+                  <span className="mt-0.5 inline-block rounded bg-warning-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-600 dark:bg-warning-500/12 dark:text-warning-500">Tasdiqlanmagan</span>
+                )}
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button onClick={() => open(d.key)} className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5">Ko‘rish</button>
+                <button onClick={async () => downloadBlob(await api.caseDocumentBlob(caseId, d.key), `${d.key}_${number}.pdf`)} className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50 dark:border-gray-700 dark:text-brand-400 dark:hover:bg-brand-500/12"><Download className="h-3.5 w-3.5" /> Yuklab olish</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
