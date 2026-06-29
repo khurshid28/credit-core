@@ -32,11 +32,6 @@ export const TRANSITIONS: TransitionRule[] = [
   { from: CaseStatus.ADMIN_FINALIZE, to: CaseStatus.FINALIZED, role: Role.ADMIN, decision: WorkflowDecision.FINALIZE },
   { from: CaseStatus.ADMIN_FINALIZE, to: CaseStatus.DIRECTOR_REVIEW, role: Role.ADMIN, decision: WorkflowDecision.RETURN },
 
-  // Director override — may force-finalize a case from ANY active step (escape hatch).
-  { from: CaseStatus.MODERATION, to: CaseStatus.FINALIZED, role: Role.DIRECTOR, decision: WorkflowDecision.FINALIZE, override: true },
-  { from: CaseStatus.DIRECTOR_REVIEW, to: CaseStatus.FINALIZED, role: Role.DIRECTOR, decision: WorkflowDecision.FINALIZE, override: true },
-  { from: CaseStatus.ADMIN_FINALIZE, to: CaseStatus.FINALIZED, role: Role.DIRECTOR, decision: WorkflowDecision.FINALIZE, override: true },
-
   // Cancel — moderator aborts a case in their queue; director may cancel any active step.
   { from: CaseStatus.MODERATION, to: CaseStatus.CANCELLED, role: Role.MODERATOR, decision: WorkflowDecision.CANCEL, override: true },
   { from: CaseStatus.MODERATION, to: CaseStatus.CANCELLED, role: Role.DIRECTOR, decision: WorkflowDecision.CANCEL, override: true },

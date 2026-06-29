@@ -57,14 +57,6 @@ describe('WorkflowService', () => {
     expect(rule.to).toBe(CaseStatus.FINALIZED);
   });
 
-  it('lets the director force-finalize from any active step without final docs', () => {
-    for (const from of [CaseStatus.MODERATION, CaseStatus.DIRECTOR_REVIEW, CaseStatus.ADMIN_FINALIZE]) {
-      const rule = svc.resolve({ currentStatus: from, role: Role.DIRECTOR, decision: WorkflowDecision.FINALIZE, documentTypes: [] });
-      expect(rule.to).toBe(CaseStatus.FINALIZED);
-      expect(rule.override).toBe(true);
-    }
-  });
-
   it('lets a moderator cancel a case in moderation', () => {
     const rule = svc.resolve({ currentStatus: CaseStatus.MODERATION, role: Role.MODERATOR, decision: WorkflowDecision.CANCEL, documentTypes: [] });
     expect(rule.to).toBe(CaseStatus.CANCELLED);

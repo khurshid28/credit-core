@@ -156,9 +156,11 @@ export interface NotificationItem {
 
 export interface StatsResponse {
   byStatus: { status: CaseStatus; count: number }[];
-  byBranch: { branch: string; count: number }[];
+  byBranch: { branch: string; count: number; amount: number }[];
   byProduct: { product: ProductType; count: number; amount: number }[];
   byMonth: { month: string; count: number; amount: number }[];
+  /** Product mix per calendar month (last 6), for a stacked bar. */
+  byProductMonth: { month: string; realEstate: number; auto: number }[];
   totalCases: number;
   totalAmount: number;
   totalKatm: number;
@@ -167,6 +169,8 @@ export interface StatsResponse {
   approvalRate: number; // finalized / total, 0..1
   finalizedCount: number;
   activeCount: number; // in-progress (not finalized/rejected)
+  overdueCount: number; // active steps past their SLA deadline (not paused)
+  pausedCount: number; // currently on hold
   recent: CreditCaseListItem[];
 }
 
@@ -202,6 +206,8 @@ export interface CreditCaseDto {
   stepDeadlineAt: string | null;
   /** When set, the case is on hold and the SLA timer is suspended. */
   pausedAt: string | null;
+  /** Auto-resume moment for the active pause (set when pausing; null otherwise). */
+  pauseUntil: string | null;
   createdAt: string;
   updatedAt: string;
 }

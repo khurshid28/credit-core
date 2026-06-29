@@ -115,6 +115,7 @@ export function toCaseDto(c: CaseWithRelations): CreditCaseDto {
     stepStartedAt: iso(c.stepStartedAt),
     stepDeadlineAt: iso(c.stepDeadlineAt),
     pausedAt: iso(c.pausedAt),
+    pauseUntil: iso(c.pauseUntil),
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };

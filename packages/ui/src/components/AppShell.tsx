@@ -288,6 +288,7 @@ export function AppShell({ title, nav, children }: { title: string; nav: NavItem
         open={confirmLogout}
         onClose={() => setConfirmLogout(false)}
         onConfirm={logout}
+        tone="primary"
         title="Tizimdan chiqasizmi?"
         message="Joriy sessiya yakunlanadi va qaytadan login qilishingiz kerak bo'ladi."
         confirmLabel="Chiqish"

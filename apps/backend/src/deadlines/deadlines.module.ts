@@ -25,19 +25,29 @@ export class DeadlineService {
   async checkOverdue(): Promise<void> {
     const now = new Date();
 
-    // Auto-resume cases paused longer than the admin-configured max.
+    // Auto-resume cases whose chosen pause window has elapsed. Each case carries its
+    // own `pauseUntil`; legacy pauses without one fall back to the admin max (calendar days).
     const cfg = await this.prisma.appConfig.findUnique({ where: { id: 'default' } });
     const maxMs = (cfg?.maxPauseDays ?? 5) * 24 * 60 * 60 * 1000;
+    const legacyCutoff = new Date(now.getTime() - maxMs);
     const expired = await this.prisma.creditCase.findMany({
-      where: { pausedAt: { not: null, lt: new Date(now.getTime() - maxMs) } },
-      select: { id: true, stepDeadlineAt: true },
+      where: {
+        pausedAt: { not: null },
+        OR: [{ pauseUntil: { lte: now } }, { pauseUntil: null, pausedAt: { lt: legacyCutoff } }],
+      },
+      select: { id: true, stepDeadlineAt: true, pausedAt: true, pauseUntil: true },
     });
     for (const c of expired) {
+      // Shift the step deadline by the realised pause span (window for timed pauses, max for legacy).
+      const ext = c.pauseUntil && c.pausedAt
+        ? c.pauseUntil.getTime() - c.pausedAt.getTime()
+        : maxMs;
       await this.prisma.creditCase.update({
         where: { id: c.id },
         data: {
           pausedAt: null,
-          stepDeadlineAt: c.stepDeadlineAt ? new Date(c.stepDeadlineAt.getTime() + maxMs) : null,
+          pauseUntil: null,
+          stepDeadlineAt: c.stepDeadlineAt ? new Date(c.stepDeadlineAt.getTime() + ext) : null,
           overdueNotified: false,
         },
       });

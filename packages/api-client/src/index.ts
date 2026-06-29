@@ -113,8 +113,8 @@ export const api = {
     const { data } = await http.put<CreditCaseDto>(`/cases/${id}/katm-price`, { katmPrice });
     return data;
   },
-  async pauseCase(id: string): Promise<CreditCaseDto> {
-    const { data } = await http.post<CreditCaseDto>(`/cases/${id}/pause`);
+  async pauseCase(id: string, days?: number): Promise<CreditCaseDto> {
+    const { data } = await http.post<CreditCaseDto>(`/cases/${id}/pause`, days != null ? { days } : {});
     return data;
   },
   async resumeCase(id: string): Promise<CreditCaseDto> {

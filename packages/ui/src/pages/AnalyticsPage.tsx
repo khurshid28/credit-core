@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Banknote, FileCheck2, Landmark, Layers, House, Car, Chart, Money } from '../lib/icons';
+import {
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from 'recharts';
+import {
+  Banknote, FileCheck2, Landmark, Layers, House, Car, Chart, Money, Building, Clock, Pause, ArrowRight,
+} from '../lib/icons';
 import { api } from '@credit-core/api-client';
 import { CaseStatus, ProductType, PRODUCT_LABEL, STATUS_LABEL, Role } from '@credit-core/shared';
 import { Card, Skeleton, StatusBadge } from '../components/primitives';
@@ -35,12 +39,47 @@ function computeRange(key: RangeKey, custom: { from: string | null; to: string |
 const MONTH_SHORT = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
 const monthLabel = (mk: string) => { const [, m] = mk.split('-'); return MONTH_SHORT[Number(m) - 1] ?? mk; };
 
-function ChartTip({ active, payload }: any) {
+/** Short so'm: 1.2 mlrd / 340 mln / 56 ming. */
+function compactSom(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1).replace('.0', '')} mlrd`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1).replace('.0', '')} mln`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)} ming`;
+  return String(n);
+}
+
+/** Month-over-month % change of the last two values. */
+function momDelta(values: number[]): number | undefined {
+  if (values.length < 2) return undefined;
+  const prev = values[values.length - 2];
+  const cur = values[values.length - 1];
+  if (!prev) return cur > 0 ? 100 : undefined;
+  return Math.round(((cur - prev) / prev) * 100);
+}
+
+/** Multi-series tooltip — renders each payload row with its color; money or count. */
+function SeriesTip({ active, payload, label, unit }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-theme-md dark:border-gray-800 dark:bg-gray-900">
+      {label != null && <p className="mb-1 font-semibold text-gray-800 dark:text-white">{label}</p>}
+      {payload.map((p: any) => (
+        <p key={p.dataKey} className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+          <span className="h-2 w-2 rounded-full" style={{ background: p.color || p.fill }} />
+          {p.name}:&nbsp;
+          <span className="nums font-medium text-gray-800 dark:text-gray-100">{unit === 'money' ? formatMoney(p.value) : `${p.value} ta`}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Donut tooltip (status name + count). */
+function PieTip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 shadow-theme-md dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <p className="font-semibold text-gray-800 dark:text-white">{payload[0].payload.name}</p>
-      <p className="text-gray-500 dark:text-gray-400">{payload[0].value} ta</p>
+      <p className="nums text-gray-500 dark:text-gray-400">{payload[0].value} ta</p>
     </div>
   );
 }
@@ -53,6 +92,7 @@ export function AnalyticsPage() {
   const [custom, setCustom] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
   const [branchId, setBranchId] = useState('');
   const [region, setRegion] = useState('');
+  const [metric, setMetric] = useState<'count' | 'amount'>('count');
   const { data: branches } = useQuery({ queryKey: ['branches'], queryFn: () => api.branches(), enabled: canFilterBranch });
   const regions = useMemo(() => [...new Set((branches ?? []).map((b) => b.region).filter(Boolean) as string[])].sort(), [branches]);
   const branchOptions = useMemo(() => (branches ?? []).filter((b) => !region || b.region === region), [branches, region]);
@@ -108,124 +148,242 @@ export function AnalyticsPage() {
     </div>
   );
 
+  const header = (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Monitoring va tahlil</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Ishlar bo‘yicha umumiy ko‘rsatkichlar</p>
+      </div>
+      {filterBar}
+    </div>
+  );
+
   if (isLoading || !data) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Monitoring va tahlil</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Ishlar bo‘yicha umumiy ko‘rsatkichlar</p>
-          </div>
-          {filterBar}
-        </div>
+        {header}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[132px] rounded-2xl" />)}</div>
-        <div className="grid gap-6 lg:grid-cols-2">{[0, 1].map((i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}</div>
+        <Skeleton className="h-80 rounded-2xl" />
+        <div className="grid gap-6 lg:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}</div>
       </div>
     );
   }
 
   const pieData = data.byStatus.filter((s) => s.count > 0).map((s) => ({ name: STATUS_LABEL[s.status], value: s.count, status: s.status }));
+  const statusList = [...data.byStatus].filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
+  const topBranches = data.byBranch.slice(0, 6);
+  const branchMax = Math.max(1, ...topBranches.map((b) => b.count));
+  const countDelta = momDelta(data.byMonth.map((m) => m.count));
+  const amountDelta = momDelta(data.byMonth.map((m) => m.amount));
+  const barData = data.byMonth.map((m) => ({ name: monthLabel(m.month), value: metric === 'count' ? m.count : m.amount }));
+  const productMonthData = data.byProductMonth.map((m) => ({ name: monthLabel(m.month), realEstate: m.realEstate, auto: m.auto }));
+  const hasProductMonth = productMonthData.some((m) => m.realEstate + m.auto > 0);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Monitoring va tahlil</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Ishlar bo‘yicha umumiy ko‘rsatkichlar</p>
-        </div>
-        {filterBar}
-      </div>
+      {header}
 
+      {/* KPI hero row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard icon={Layers} label="Jami ishlar" value={String(data.totalCases)} tone="brand" />
+        <MetricCard icon={Layers} label="Jami ishlar" value={String(data.totalCases)} delta={countDelta} tone="brand" />
+        <MetricCard icon={Banknote} label="Jami summa" value={formatMoney(data.totalAmount)} delta={amountDelta} tone="warning" />
         <MetricCard icon={FileCheck2} label="Yakunlangan" value={String(data.finalizedCount)} tone="success" />
-        <MetricCard icon={Banknote} label="Jami summa" value={formatMoney(data.totalAmount)} tone="warning" />
-        <MetricCard icon={Landmark} label="Jami KATM" value={formatMoney(data.totalKatm)} tone="danger" />
+        <MetricCard icon={Chart} label="Jarayonda" value={String(data.activeCount)} tone="brand" />
       </div>
 
+      {/* Secondary metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard icon={Chart} label="Jarayonda" value={String(data.activeCount)} tone="brand" />
         <MetricCard icon={Money} label="O‘rtacha summa" value={formatMoney(data.avgAmount)} tone="warning" />
         <MetricCard icon={FileCheck2} label="Tasdiqlash ulushi" value={`${Math.round(data.approvalRate * 100)}%`} tone="success" />
-        <MetricCard icon={Landmark} label="Jami garov qiymati" value={formatMoney(data.totalCollateralValue)} tone="danger" />
+        <MetricCard icon={Landmark} label="Jami KATM" value={formatMoney(data.totalKatm)} tone="danger" />
+        <MetricCard icon={Landmark} label="Garov qiymati" value={formatMoney(data.totalCollateralValue)} tone="brand" />
       </div>
 
-      <WidgetCard title="Oylik dinamika (6 oy)">
-        <div className="h-60">
+      {/* Hero chart with count / amount toggle */}
+      <WidgetCard
+        title="Arizalar dinamikasi"
+        subtitle="So‘nggi 6 oy kesimida"
+        action={
+          <div className="flex gap-1 rounded-lg border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
+            {([['count', 'Soni'], ['amount', 'Summa']] as const).map(([k, lbl]) => (
+              <button key={k} onClick={() => setMetric(k)}
+                className={cn('rounded-md px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/30',
+                  metric === k ? 'bg-brand-600 text-white shadow-theme-sm' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5')}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data.byMonth.map((m) => ({ name: monthLabel(m.month), count: m.count, amount: m.amount }))} margin={{ left: -18, top: 6 }}>
+            <BarChart data={barData} margin={{ left: -8, right: 8, top: 8 }} barCategoryGap="28%">
               <defs>
-                <linearGradient id="monthGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartPalette.violet} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={chartPalette.violet} stopOpacity={0} />
+                <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={chartPalette.brandSoft} />
+                  <stop offset="100%" stopColor={chartPalette.brand} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: tick }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: tick }} />
-              <Tooltip content={<ChartTip />} cursor={{ stroke: grid }} />
-              <Area type="monotone" dataKey="count" stroke={chartPalette.violet} strokeWidth={2.5} fill="url(#monthGrad)" />
-            </AreaChart>
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: tick }} axisLine={false} tickLine={false} />
+              <YAxis
+                allowDecimals={false}
+                width={metric === 'amount' ? 56 : 36}
+                tick={{ fontSize: 11, fill: tick }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => (metric === 'amount' ? compactSom(Number(v)) : String(v))}
+              />
+              <Tooltip content={<SeriesTip unit={metric === 'amount' ? 'money' : 'count'} />} cursor={{ fill: theme === 'dark' ? 'rgba(255,255,255,.04)' : 'rgba(16,24,40,.04)' }} />
+              <Bar dataKey="value" name={metric === 'amount' ? 'Summa' : 'Arizalar'} fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={46} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </WidgetCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <WidgetCard title="Holatlar ulushi">
-          {data.totalCases ? (
-            <div className="relative h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={62} outerRadius={92} paddingAngle={2} stroke="none">
-                    {pieData.map((p) => <Cell key={p.status} fill={statusColor[p.status]} />)}
-                  </Pie>
-                  <Tooltip content={<ChartTip />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="nums text-3xl font-bold text-gray-800 dark:text-white">{data.totalCases}</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">jami ariza</span>
-              </div>
-            </div>
+      {/* Top branches · status breakdown · live process card */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <WidgetCard
+          title="Top filiallar"
+          subtitle="Arizalar soni bo‘yicha"
+          action={canFilterBranch ? <Link to="/branches" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">Hammasi <ArrowRight className="h-4 w-4" /></Link> : undefined}
+        >
+          {topBranches.length ? (
+            <ul className="space-y-3.5">
+              {topBranches.map((b, i) => (
+                <li key={b.branch}>
+                  <div className="mb-1 flex items-center gap-2 text-sm">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/12 dark:text-brand-400">{i + 1}</span>
+                    <span className="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-200"><Building className="h-4 w-4 text-gray-400" /> {b.branch}</span>
+                    <span className="ml-auto shrink-0 text-gray-500 dark:text-gray-400"><span className="nums font-semibold text-gray-700 dark:text-gray-200">{b.count}</span> ta · {compactSom(b.amount)}</span>
+                  </div>
+                  <div className="ml-9 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(b.count / branchMax) * 100}%` }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-sm text-gray-400">Ma'lumot yo‘q</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Ma'lumot yo‘q</p>
           )}
-          <div className="mt-3 grid grid-cols-2 gap-1.5">
-            {pieData.map((p) => (
-              <div key={p.status} className="flex items-center gap-1.5 text-xs">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor[p.status as CaseStatus] }} />
-                <span className="truncate text-gray-500 dark:text-gray-400">{p.name}</span>
-                <span className="nums ml-auto font-semibold text-gray-700 dark:text-gray-200">{p.value}</span>
-              </div>
-            ))}
-          </div>
         </WidgetCard>
 
-        <WidgetCard title="Filial bo‘yicha hajm">
-          {data.byBranch.length ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.byBranch.map((b) => ({ name: b.branch, count: b.count }))} margin={{ left: -18, top: 6 }}>
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chartPalette.brandSoft} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={chartPalette.brandSoft} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: tick }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: tick }} />
-                  <Tooltip content={<ChartTip />} cursor={{ stroke: grid }} />
-                  <Area type="monotone" dataKey="count" stroke={chartPalette.brandSoft} strokeWidth={2.5} fill="url(#areaGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        <WidgetCard title="Holatlar" subtitle="Bosqichlar kesimida">
+          {statusList.length ? (
+            <ul className="space-y-3.5">
+              {statusList.map((s) => {
+                const pct = data.totalCases ? Math.round((s.count / data.totalCases) * 100) : 0;
+                return (
+                  <li key={s.status}>
+                    <div className="mb-1 flex items-center gap-2 text-sm">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: statusColor[s.status] }} />
+                      <span className="truncate font-medium text-gray-700 dark:text-gray-200">{STATUS_LABEL[s.status]}</span>
+                      <span className="ml-auto shrink-0 text-gray-500 dark:text-gray-400"><span className="nums font-semibold text-gray-700 dark:text-gray-200">{s.count}</span> · {pct}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: statusColor[s.status] }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
-            <p className="text-sm text-gray-400">Ma'lumot yo‘q</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Ma'lumot yo‘q</p>
+          )}
+        </WidgetCard>
+
+        <WidgetCard title="Jarayon holati" subtitle="Hozirgi yuk">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-500 opacity-60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success-500" />
+            </span>
+            <span className="nums text-3xl font-bold text-gray-800 dark:text-white">{data.activeCount}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">ariza jarayonda</span>
+          </div>
+          <div className="-mx-1 mt-3 h-24">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.byMonth.map((m) => ({ name: monthLabel(m.month), count: m.count }))} margin={{ top: 4, bottom: 0, left: 4, right: 4 }}>
+                <defs>
+                  <linearGradient id="liveGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartPalette.success} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={chartPalette.success} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Tooltip content={<SeriesTip unit="count" />} cursor={false} />
+                <Area type="monotone" dataKey="count" name="Arizalar" stroke={chartPalette.success} strokeWidth={2} fill="url(#liveGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+            <LiveStat icon={Clock} label="Muddati o‘tgan" value={data.overdueCount} tone="danger" />
+            <LiveStat icon={Pause} label="Pauzada" value={data.pausedCount} tone="muted" />
+            <LiveStat icon={FileCheck2} label="Yakunlangan" value={data.finalizedCount} tone="success" />
+          </div>
+        </WidgetCard>
+      </div>
+
+      {/* Product dynamics (stacked) · status share (donut) */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <WidgetCard title="Mahsulot dinamikasi" subtitle="Oylar bo‘yicha taqsimot" className="lg:col-span-3">
+          {hasProductMonth ? (
+            <>
+              <div className="mb-3 flex flex-wrap gap-4 text-xs">
+                <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: productColor[ProductType.REAL_ESTATE] }} /> {PRODUCT_LABEL[ProductType.REAL_ESTATE]}</span>
+                <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: productColor[ProductType.AUTO] }} /> {PRODUCT_LABEL[ProductType.AUTO]}</span>
+              </div>
+              <div className="h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={productMonthData} margin={{ left: -8, right: 8, top: 4 }} barCategoryGap="28%">
+                    <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: tick }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} width={32} tick={{ fontSize: 11, fill: tick }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<SeriesTip unit="count" />} cursor={{ fill: theme === 'dark' ? 'rgba(255,255,255,.04)' : 'rgba(16,24,40,.04)' }} />
+                    <Bar dataKey="realEstate" stackId="p" name={PRODUCT_LABEL[ProductType.REAL_ESTATE]} fill={productColor[ProductType.REAL_ESTATE]} radius={[0, 0, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="auto" stackId="p" name={PRODUCT_LABEL[ProductType.AUTO]} fill={productColor[ProductType.AUTO]} radius={[6, 6, 0, 0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-gray-400 dark:text-gray-500">Ma'lumot yo‘q</p>
+          )}
+        </WidgetCard>
+
+        <WidgetCard title="Holatlar ulushi" className="lg:col-span-2">
+          {data.totalCases ? (
+            <>
+              <div className="relative h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86} paddingAngle={2} stroke="none">
+                      {pieData.map((p) => <Cell key={p.status} fill={statusColor[p.status]} />)}
+                    </Pie>
+                    <Tooltip content={<PieTip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="nums text-3xl font-bold text-gray-800 dark:text-white">{data.totalCases}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">jami ariza</span>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
+                {pieData.map((p) => (
+                  <div key={p.status} className="flex items-center gap-1.5 text-xs">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor[p.status as CaseStatus] }} />
+                    <span className="truncate text-gray-500 dark:text-gray-400">{p.name}</span>
+                    <span className="nums ml-auto font-semibold text-gray-700 dark:text-gray-200">{p.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-gray-400 dark:text-gray-500">Ma'lumot yo‘q</p>
           )}
         </WidgetCard>
       </div>
 
+      {/* Product split bars */}
       <WidgetCard title="Mahsulot bo‘yicha">
         <div className="space-y-3">
           {data.byProduct.map((p) => {
@@ -277,6 +435,23 @@ export function AnalyticsPage() {
           </table>
         </div>
       </Card>
+    </div>
+  );
+}
+
+const liveTone = {
+  danger: 'text-error-600 dark:text-error-500',
+  success: 'text-success-600 dark:text-success-500',
+  muted: 'text-gray-600 dark:text-gray-300',
+} as const;
+
+function LiveStat({ icon: Icon, label, value, tone }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; tone: keyof typeof liveTone }) {
+  return (
+    <div className="text-center">
+      <p className={cn('nums flex items-center justify-center gap-1 text-lg font-bold', liveTone[tone])}>
+        <Icon className="h-4 w-4" /> {value}
+      </p>
+      <p className="mt-0.5 text-[11px] leading-tight text-gray-500 dark:text-gray-400">{label}</p>
     </div>
   );
 }

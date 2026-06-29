@@ -127,7 +127,7 @@ export class CreditCasesService {
       });
       where.branchId = { in: assigned.map((b) => b.id) };
     } else if (user.role === Role.DIRECTOR) {
-      // Director oversees the whole active pipeline (may force-finalize/cancel any step).
+      // Director oversees the whole active pipeline (may cancel/reopen any step).
       where.status = mineOnly
         ? CaseStatus.DIRECTOR_REVIEW
         : { in: [CaseStatus.MODERATION, CaseStatus.DIRECTOR_REVIEW, CaseStatus.ADMIN_FINALIZE, CaseStatus.FINALIZED, CaseStatus.CANCELLED] };
@@ -215,27 +215,43 @@ export class CreditCasesService {
     return { stepStartedAt: now, stepDeadlineAt: addBusinessDays(now, days), overdueNotified: false, pausedAt: null };
   }
 
-  /** Put an active case on hold — suspends its SLA timer (moderator/director/admin). */
-  async pause(id: string) {
+  /**
+   * Put an active case on hold — suspends its SLA timer (moderator/director/admin).
+   * `days` is the business-day pause window chosen by the user, clamped to the admin
+   * maximum (maxPauseDays). The case auto-resumes at `pauseUntil` if not resumed sooner.
+   */
+  async pause(id: string, days?: number) {
     const c = await this.prisma.creditCase.findUnique({ where: { id } });
     if (!c) throw new NotFoundException('Ariza topilmadi');
     if (!hasDeadline(c.status)) throw new ForbiddenException('Faqat aktiv bosqichdagi arizani pauzaga qo‘yish mumkin');
-    if (!c.pausedAt) await this.prisma.creditCase.update({ where: { id }, data: { pausedAt: new Date() } });
+    if (c.pausedAt) return this.getOne(id);
+    const cfg = await this.prisma.appConfig.findUnique({ where: { id: 'default' } });
+    const max = Math.max(1, cfg?.maxPauseDays ?? 5);
+    const window = Math.max(1, Math.min(max, Math.round(days ?? max)));
+    const now = new Date();
+    await this.prisma.creditCase.update({
+      where: { id },
+      data: { pausedAt: now, pauseUntil: addBusinessDays(now, window) },
+    });
     return this.getOne(id);
   }
 
-  /** Resume a paused case — shifts its deadline forward by the paused time (capped at maxPauseDays). */
+  /** Resume a paused case — shifts its deadline forward by the paused time (capped at the pause window). */
   async resume(id: string) {
     const c = await this.prisma.creditCase.findUnique({ where: { id } });
     if (!c) throw new NotFoundException('Ariza topilmadi');
     if (!c.pausedAt) return this.getOne(id);
     const cfg = await this.prisma.appConfig.findUnique({ where: { id: 'default' } });
-    const maxMs = (cfg?.maxPauseDays ?? 5) * 24 * 60 * 60 * 1000;
-    const ext = Math.min(Date.now() - c.pausedAt.getTime(), maxMs);
+    // Cap the shift at the chosen window (pauseUntil − pausedAt) or, for legacy pauses
+    // without a window, the admin maximum in calendar days.
+    const capMs = c.pauseUntil
+      ? c.pauseUntil.getTime() - c.pausedAt.getTime()
+      : (cfg?.maxPauseDays ?? 5) * 24 * 60 * 60 * 1000;
+    const ext = Math.min(Date.now() - c.pausedAt.getTime(), capMs);
     const newDeadline = c.stepDeadlineAt ? new Date(c.stepDeadlineAt.getTime() + ext) : null;
     await this.prisma.creditCase.update({
       where: { id },
-      data: { pausedAt: null, stepDeadlineAt: newDeadline, overdueNotified: false },
+      data: { pausedAt: null, pauseUntil: null, stepDeadlineAt: newDeadline, overdueNotified: false },
     });
     return this.getOne(id);
   }

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowRight, Banknote, CheckCircle2, Clock, Download, FileDown, FileText, Pencil, Pause, Play, RotateCcw, Send, Flag, Upload, Eye, House, Car, Paperclip, Trash2, X,
+  ArrowRight, Banknote, CheckCircle2, Clock, Download, FileDown, FileText, Pencil, Pause, Play, RotateCcw, Send, Flag, Upload, Eye, House, Car, Paperclip, Trash2, X, Plus, Minus,
 } from '../lib/icons';
 import { api, downloadBlob, viewDocument, documentInlineUrl } from '@credit-core/api-client';
 import { CaseChat } from '../components/CaseChat';
@@ -12,7 +12,7 @@ import {
 } from '@credit-core/shared';
 import { useAuth } from '../lib/auth';
 import { Button, Card, Field, Input, StatusBadge } from '../components/primitives';
-import { ConfirmDialog, Modal } from '../components/Modal';
+import { Modal } from '../components/Modal';
 import { DeadlineBadge } from '../components/DeadlineBadge';
 import { Select, MoneyInput } from '../components/forms';
 import { CaseTimeline } from '../components/CaseTimeline';
@@ -30,8 +30,9 @@ export function CaseView() {
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
   const [katm, setKatm] = useState('');
-  const [confirmDecision, setConfirmDecision] = useState<WorkflowDecision | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [pauseDays, setPauseDays] = useState(2);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DocumentType>(DocumentType.NOTARY);
 
@@ -53,8 +54,13 @@ export function CaseView() {
   });
 
   const { data: appCfg } = useQuery({ queryKey: ['app-config'], queryFn: () => api.getConfig() });
-  const pauseMut = useMutation({ mutationFn: () => api.pauseCase(id!), onSuccess: refresh });
+  const maxPauseDays = Math.max(1, appCfg?.maxPauseDays ?? 5);
+  const pauseMut = useMutation({
+    mutationFn: (days: number) => api.pauseCase(id!, days),
+    onSuccess: () => { setPauseOpen(false); refresh(); },
+  });
   const resumeMut = useMutation({ mutationFn: () => api.resumeCase(id!), onSuccess: refresh });
+  const openPause = () => { setPauseDays(Math.min(2, maxPauseDays)); setPauseOpen(true); };
 
   if (isLoading || !c) return <p className="text-gray-500 dark:text-gray-400">Yuklanmoqda…</p>;
 
@@ -81,9 +87,6 @@ export function CaseView() {
     [WorkflowDecision.RETURN]: RotateCcw, [WorkflowDecision.FINALIZE]: Flag,
     [WorkflowDecision.CANCEL]: X, [WorkflowDecision.REOPEN]: RotateCcw,
   };
-  type Rule = (typeof myTransitions)[number];
-  const buttonLabel = (t: Rule) =>
-    t.override && t.decision === WorkflowDecision.FINALIZE ? 'Majburiy yakunlash' : decisionLabel[t.decision];
   // Cancel + reopen are routed through one "Bekor qilish" choice dialog, not direct buttons.
   const inlineTransitions = myTransitions.filter(
     (t) => t.decision !== WorkflowDecision.CANCEL && t.decision !== WorkflowDecision.REOPEN,
@@ -104,7 +107,7 @@ export function CaseView() {
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{c.number}</h1>
             <StatusBadge status={c.status} />
-            <DeadlineBadge deadlineAt={c.stepDeadlineAt} paused={!!c.pausedAt} />
+            <DeadlineBadge deadlineAt={c.stepDeadlineAt} paused={!!c.pausedAt} pauseUntil={c.pauseUntil} />
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">{PRODUCT_LABEL[c.productType]} • {c.branch?.name ?? '—'}</p>
         </div>
@@ -226,13 +229,20 @@ export function CaseView() {
             <Card className="space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="font-semibold text-gray-800 dark:text-white">Amallar</h2>
-                {(c.stepDeadlineAt || c.pausedAt) && <DeadlineBadge deadlineAt={c.stepDeadlineAt} paused={!!c.pausedAt} />}
+                {(c.stepDeadlineAt || c.pausedAt) && <DeadlineBadge deadlineAt={c.stepDeadlineAt} paused={!!c.pausedAt} pauseUntil={c.pauseUntil} />}
               </div>
 
               {c.pausedAt && (
-                <p className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-white/5 dark:text-gray-300">
-                  <Pause className="h-4 w-4 shrink-0 text-gray-400" /> Ariza pauzada — muddat to‘xtatilgan.
-                </p>
+                <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-white/5 dark:text-gray-300">
+                  <p className="flex items-center gap-2">
+                    <Pause className="h-4 w-4 shrink-0 text-gray-400" /> Ariza pauzada — muddat to‘xtatilgan.
+                  </p>
+                  {c.pauseUntil && (
+                    <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
+                      Avtomatik davom etadi: <span className="font-medium text-gray-700 dark:text-gray-200">{new Date(c.pauseUntil).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                    </p>
+                  )}
+                </div>
               )}
 
               {myTransitions.length > 0 && (
@@ -257,9 +267,9 @@ export function CaseView() {
                           variant={t.decision === WorkflowDecision.RETURN ? 'secondary' : 'primary'}
                           className="w-full"
                           loading={transition.isPending}
-                          onClick={() => (t.override ? setConfirmDecision(t.decision) : transition.mutate(t.decision))}
+                          onClick={() => transition.mutate(t.decision)}
                         >
-                          {!transition.isPending && <Icon className="h-5 w-5" />} {buttonLabel(t)}
+                          {!transition.isPending && <Icon className="h-5 w-5" />} {decisionLabel[t.decision]}
                         </Button>
                       );
                     })}
@@ -274,7 +284,7 @@ export function CaseView() {
                       <Play className="h-5 w-5" /> Davom ettirish
                     </Button>
                   ) : (
-                    <Button variant="secondary" className="flex-1" loading={pauseMut.isPending} disabled={!activeStep} onClick={() => pauseMut.mutate()}>
+                    <Button variant="secondary" className="flex-1" loading={pauseMut.isPending} disabled={!activeStep} onClick={openPause}>
                       <Pause className="h-5 w-5" /> Pauza
                     </Button>
                   ))}
@@ -297,21 +307,6 @@ export function CaseView() {
         <h2 className="mb-3 font-semibold text-gray-800 dark:text-white">Muloqot (chat)</h2>
         <CaseChat caseId={c.id} />
       </Card>
-
-      <ConfirmDialog
-        open={confirmDecision !== null}
-        onClose={() => setConfirmDecision(null)}
-        onConfirm={() => confirmDecision && transition.mutate(confirmDecision, { onSettled: () => setConfirmDecision(null) })}
-        loading={transition.isPending}
-        tone={confirmDecision === WorkflowDecision.CANCEL ? 'danger' : 'primary'}
-        title={confirmDecision === WorkflowDecision.CANCEL ? 'Arizani bekor qilasizmi?' : 'Arizani majburiy yakunlaysizmi?'}
-        message={
-          confirmDecision === WorkflowDecision.CANCEL
-            ? 'Ariza "Bekor qilingan" holatiga o‘tadi. Bu amalni qaytarib bo‘lmaydi.'
-            : 'Ariza to‘g‘ridan-to‘g‘ri "Yakunlangan" holatiga o‘tadi — qolgan bosqichlar o‘tkazib yuboriladi.'
-        }
-        confirmLabel={confirmDecision === WorkflowDecision.CANCEL ? 'Bekor qilish' : 'Yakunlash'}
-      />
 
       <Modal open={cancelOpen} onClose={() => setCancelOpen(false)} size="sm" title="Arizani bekor qilish" description="Qanday davom etamiz?">
         <div className="space-y-2.5">
@@ -341,6 +336,56 @@ export function CaseView() {
               <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Ariza butunlay bekor qilinadi. Buni qaytarib bo‘lmaydi.</span>
             </span>
           </button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={pauseOpen}
+        onClose={() => setPauseOpen(false)}
+        size="sm"
+        title="Arizani pauzaga qo‘yish"
+        description="SLA muddati to‘xtaydi va belgilangan kunlardan so‘ng avtomatik davom etadi."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPauseOpen(false)}>Bekor qilish</Button>
+            <Button onClick={() => pauseMut.mutate(pauseDays)} loading={pauseMut.isPending}>
+              <Pause className="h-5 w-5" /> Pauzaga qo‘yish
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Pauza muddati</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Eng ko‘pi {maxPauseDays} ish kuni</p>
+            </div>
+            <div className="inline-flex h-11 items-center overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <button
+                type="button"
+                aria-label="Kamaytirish"
+                disabled={pauseDays <= 1}
+                onClick={() => setPauseDays((d) => Math.max(1, d - 1))}
+                className="grid h-full w-10 place-items-center text-gray-500 outline-none transition hover:bg-gray-50 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/30 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <span className="nums grid h-full w-12 place-items-center border-x border-gray-200 text-sm font-semibold text-gray-800 dark:border-gray-700 dark:text-gray-100">{pauseDays}</span>
+              <button
+                type="button"
+                aria-label="Oshirish"
+                disabled={pauseDays >= maxPauseDays}
+                onClick={() => setPauseDays((d) => Math.min(maxPauseDays, d + 1))}
+                className="grid h-full w-10 place-items-center text-gray-500 outline-none transition hover:bg-gray-50 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/30 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <p className="flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+            <span><span className="font-medium text-gray-700 dark:text-gray-200">{pauseDays} ish kun</span>idan so‘ng ariza avtomatik davom etadi. Dam olish kunlari hisobga olinmaydi.</span>
+          </p>
         </div>
       </Modal>
     </div>

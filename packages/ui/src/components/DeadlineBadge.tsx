@@ -24,11 +24,14 @@ function humanizeSpan(ms: number): string {
 export function DeadlineBadge({
   deadlineAt,
   paused = false,
+  pauseUntil = null,
   compact = false,
   className,
 }: {
   deadlineAt: string | null;
   paused?: boolean;
+  /** Auto-resume moment for the active pause — shown as a countdown on the chip. */
+  pauseUntil?: string | null;
   compact?: boolean;
   className?: string;
 }) {
@@ -40,12 +43,17 @@ export function DeadlineBadge({
   }, []);
 
   if (paused) {
+    const remain = pauseUntil ? new Date(pauseUntil).getTime() - Date.now() : null;
+    const label = remain != null && remain > 0 ? `Pauza · ${humanizeSpan(remain)} qoldi` : 'Pauza';
+    const title = pauseUntil
+      ? `Pauzada — avtomatik davom etadi: ${new Date(pauseUntil).toLocaleString('ru-RU')}`
+      : 'Ariza pauzada — muddat to‘xtatilgan';
     return (
       <span
-        title="Ariza pauzada — muddat to‘xtatilgan"
+        title={title}
         className={cn('inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-300', className)}
       >
-        <Pause className="h-3.5 w-3.5" /> Pauza
+        <Pause className="h-3.5 w-3.5" /> {label}
       </span>
     );
   }

@@ -66,8 +66,8 @@ export class CreditCasesController {
   @UseGuards(RolesGuard)
   @Roles(Role.MODERATOR, Role.DIRECTOR, Role.ADMIN)
   @Post(':id/pause')
-  pause(@Param('id') id: string) {
-    return this.service.pause(id);
+  pause(@Param('id') id: string, @Body() body?: { days?: number }) {
+    return this.service.pause(id, body?.days);
   }
 
   @UseGuards(RolesGuard)

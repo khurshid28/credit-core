@@ -102,6 +102,7 @@ model CreditCase {
   stepDeadlineAt  DateTime?
   overdueNotified Boolean  @default(false) // overdue notification already sent for this step
   pausedAt        DateTime? // set while the case is on hold — SLA timer is suspended
+  pauseUntil      DateTime? // chosen auto-resume moment for the current pause (business-day window)
 
   branch       Branch?     @relation(fields: [branchId], references: [id])
   branchId     String?
