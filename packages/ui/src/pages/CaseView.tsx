@@ -11,7 +11,7 @@ import {
   TRANSITIONS, WorkflowDecision, type CreditCaseDto, type DocumentDto,
 } from '@credit-core/shared';
 import { useAuth } from '../lib/auth';
-import { Button, Card, Field, Input, StatusBadge } from '../components/primitives';
+import { Button, Card, Field, Input, Skeleton, StatusBadge } from '../components/primitives';
 import { Modal } from '../components/Modal';
 import { DeadlineBadge } from '../components/DeadlineBadge';
 import { Select, MoneyInput } from '../components/forms';
@@ -62,7 +62,7 @@ export function CaseView() {
   const resumeMut = useMutation({ mutationFn: () => api.resumeCase(id!), onSuccess: refresh });
   const openPause = () => { setPauseDays(Math.min(2, maxPauseDays)); setPauseOpen(true); };
 
-  if (isLoading || !c) return <p className="text-gray-500 dark:text-gray-400">Yuklanmoqda…</p>;
+  if (isLoading || !c) return <CaseViewSkeleton />;
 
   const role = user!.role;
   const myTransitions = TRANSITIONS.filter((t) => t.from === c.status && t.role === role);
@@ -388,6 +388,45 @@ export function CaseView() {
           </p>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+/** Structural placeholder while the case loads — mirrors the real two-column layout. */
+function CaseViewSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy aria-label="Yuklanmoqda">
+      <Skeleton className="h-7 w-24" />
+      <div className="flex flex-wrap items-center gap-3">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-6 w-24 rounded-full" />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card className="space-y-4">
+            <Skeleton className="h-5 w-48" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className="space-y-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+          </Card>
+        </div>
+        <div className="space-y-6">
+          <Card className="space-y-3">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

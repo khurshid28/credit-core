@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, ArrowRight } from '../lib/icons';
+import { Search, ArrowRight, ChevronDown, Inbox } from '../lib/icons';
 import { cn } from '../lib/cn';
 import { surface } from '../lib/surfaces';
 
@@ -9,6 +9,10 @@ export interface Column<T> {
   render?: (row: T) => React.ReactNode;
   align?: 'left' | 'right' | 'center';
   className?: string;
+  /** Enable click-to-sort on this column's header. */
+  sortable?: boolean;
+  /** Value used for sorting (defaults to row[key]); use for derived/formatted columns. */
+  sortValue?: (row: T) => string | number;
 }
 
 export function DataTable<T extends { id?: string }>({
@@ -30,6 +34,7 @@ export function DataTable<T extends { id?: string }>({
 }) {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
 
   const filtered = useMemo(() => {
     if (!q || !searchFields) return rows;
@@ -37,11 +42,31 @@ export function DataTable<T extends { id?: string }>({
     return rows.filter((r) => searchFields.some((f) => String(r[f] ?? '').toLowerCase().includes(needle)));
   }, [rows, q, searchFields]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const sorted = useMemo(() => {
+    if (!sort) return filtered;
+    const col = columns.find((c) => c.key === sort.key);
+    if (!col) return filtered;
+    const val = (row: T) => (col.sortValue ? col.sortValue(row) : (row as any)[col.key]);
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const va = val(a), vb = val(b);
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'uz', { numeric: true }) * dir;
+    });
+  }, [filtered, sort, columns]);
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
-  const slice = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const slice = sorted.slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   const alignCls = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
+
+  const toggleSort = (key: string) => {
+    setPage(0);
+    setSort((s) => (s?.key === key ? (s.dir === 'asc' ? { key, dir: 'desc' } : null) : { key, dir: 'asc' }));
+  };
 
   return (
     <div className={cn('overflow-hidden', surface)}>
@@ -63,14 +88,53 @@ export function DataTable<T extends { id?: string }>({
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-white/5 dark:text-gray-400">
             <tr>
-              {columns.map((c) => (
-                <th key={c.key} className={cn('whitespace-nowrap px-4 py-3 font-medium', alignCls(c.align))}>{c.header}</th>
-              ))}
+              {columns.map((c) => {
+                const active = sort?.key === c.key;
+                return (
+                  <th
+                    key={c.key}
+                    aria-sort={c.sortable ? (active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
+                    className={cn('whitespace-nowrap px-4 py-3 font-medium', alignCls(c.align))}
+                  >
+                    {c.sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(c.key)}
+                        className={cn(
+                          'group inline-flex cursor-pointer items-center gap-1 rounded transition-colors hover:text-gray-700 dark:hover:text-gray-200',
+                          c.align === 'right' && 'flex-row-reverse',
+                          active && 'text-gray-700 dark:text-gray-200',
+                        )}
+                      >
+                        {c.header}
+                        <ChevronDown
+                          className={cn(
+                            'h-3.5 w-3.5 shrink-0 transition',
+                            active ? 'opacity-100' : 'opacity-0 group-hover:opacity-40',
+                            active && sort!.dir === 'asc' && 'rotate-180',
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      c.header
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {slice.length === 0 && (
-              <tr><td colSpan={columns.length} className="px-4 py-14 text-center text-gray-400">{empty}</td></tr>
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-16">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <span className="grid h-12 w-12 place-items-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5">
+                      <Inbox className="h-6 w-6" />
+                    </span>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{empty}</p>
+                  </div>
+                </td>
+              </tr>
             )}
             {slice.map((row, i) => (
               <tr
@@ -82,7 +146,7 @@ export function DataTable<T extends { id?: string }>({
                 )}
               >
                 {columns.map((c) => (
-                  <td key={c.key} className={cn('px-4 py-3 text-gray-700 dark:text-gray-200', alignCls(c.align), c.className)}>
+                  <td key={c.key} className={cn('px-4 py-3 text-gray-700 dark:text-gray-200', alignCls(c.align), c.align === 'right' && 'nums', c.className)}>
                     {c.render ? c.render(row) : String((row as any)[c.key] ?? '—')}
                   </td>
                 ))}
@@ -94,7 +158,14 @@ export function DataTable<T extends { id?: string }>({
 
       {/* Mobile: stacked cards (first column is the title, rest are label/value rows) */}
       <div className="divide-y divide-gray-100 sm:hidden dark:divide-gray-800">
-        {slice.length === 0 && <p className="px-4 py-12 text-center text-gray-400">{empty}</p>}
+        {slice.length === 0 && (
+          <div className="flex flex-col items-center gap-3 px-4 py-14 text-center">
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5">
+              <Inbox className="h-6 w-6" />
+            </span>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{empty}</p>
+          </div>
+        )}
         {slice.map((row, i) => {
           const [first, ...rest] = columns;
           const cell = (c: Column<T>) => (c.render ? c.render(row) : String((row as any)[c.key] ?? '—'));

@@ -25,12 +25,15 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-150',
-        'outline-none focus-visible:ring-2 disabled:opacity-50 disabled:pointer-events-none',
+        'inline-flex h-10 cursor-pointer select-none items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium',
+        'transition duration-150 ease-out motion-safe:active:scale-[0.97]',
+        'outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900',
+        'disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none',
         variants[variant],
         className,
       )}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
       {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
@@ -46,6 +49,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
         'h-11 w-full rounded-lg border border-gray-200 bg-white px-3.5 text-sm text-gray-800 outline-none transition',
         'placeholder:text-gray-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10',
         'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500',
+        'aria-[invalid=true]:border-error-400 aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error-500/10 dark:aria-[invalid=true]:border-error-500/50',
         className,
       )}
       {...props}
@@ -71,10 +75,13 @@ export function PasswordInput({ className, ...props }: Omit<React.InputHTMLAttri
   );
 }
 
+let fieldSeq = 0;
+
 export function Field({
   label,
   required,
   hint,
+  error,
   icon: Icon,
   children,
   className,
@@ -82,19 +89,40 @@ export function Field({
   label: string;
   required?: boolean;
   hint?: string;
+  /** When set, the field renders in an error state and announces the message. */
+  error?: string;
   icon?: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
   className?: string;
 }) {
+  // Stable id per field instance, for aria-describedby wiring.
+  const [msgId] = useState(() => `fld-${++fieldSeq}`);
+
+  // When invalid, mark the control via aria-invalid + describe it by the message,
+  // so screen readers announce the error and Input/field styles turn red.
+  const control =
+    error && React.isValidElement(children)
+      ? React.cloneElement(children as React.ReactElement, {
+          'aria-invalid': true,
+          'aria-describedby': msgId,
+        })
+      : children;
+
   return (
     <label className={cn('block space-y-1.5', className)}>
       <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
         {Icon && <Icon className="h-3.5 w-3.5 text-gray-400" />}
         {label}
-        {required && <span className="ml-0.5 text-error-600">*</span>}
+        {required && <span className="ml-0.5 text-error-600" aria-hidden>*</span>}
       </span>
-      {children}
-      {hint && <span className="block text-xs text-gray-400">{hint}</span>}
+      {control}
+      {error ? (
+        <span id={msgId} role="alert" className="block text-xs font-medium text-error-600 dark:text-error-500">
+          {error}
+        </span>
+      ) : (
+        hint && <span className="block text-xs text-gray-400">{hint}</span>
+      )}
     </label>
   );
 }
@@ -104,7 +132,7 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-lg bg-gray-200/70 dark:bg-gray-800', className)} />;
+  return <div aria-hidden className={cn('skeleton rounded-lg bg-gray-200/70 dark:bg-gray-800', className)} />;
 }
 
 const statusStyles: Record<CaseStatus, string> = {

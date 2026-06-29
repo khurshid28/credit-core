@@ -143,10 +143,10 @@ export function LoginPage({ role, title }: { role: Role; title: string }) {
 
           <form onSubmit={onSubmit} className="space-y-4">
             <Field label="Login">
-              <Input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="login" autoFocus />
+              <Input name="username" autoComplete="username" value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="login" autoFocus />
             </Field>
             <Field label="Parol">
-              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
+              <PasswordInput name="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
             </Field>
             {error && (
               <p role="alert" className="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/20 dark:bg-error-500/12 dark:text-error-500">

@@ -281,7 +281,9 @@ export function AppShell({ title, nav, children }: { title: string; nav: NavItem
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1536px] flex-1 p-4 md:p-6">{children}</main>
+        <main className="mx-auto w-full max-w-[1536px] flex-1 p-4 md:p-6">
+          <div key={location.pathname} className="cc-fade">{children}</div>
+        </main>
       </div>
 
       <ConfirmDialog

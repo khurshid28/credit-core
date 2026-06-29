@@ -31,7 +31,7 @@ export function Dashboard() {
 
   const columns: Column<CreditCaseListItem>[] = [
     {
-      key: 'number', header: 'Ariza',
+      key: 'number', header: 'Ariza', sortable: true, sortValue: (c) => c.number,
       render: (c) => (
         <div className="flex items-center gap-2.5">
           <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-white ${c.productType === ProductType.AUTO ? 'bg-warning-600' : 'bg-brand-700'}`}>
@@ -41,12 +41,12 @@ export function Dashboard() {
         </div>
       ),
     },
-    { key: 'borrowerName', header: 'Qarz oluvchi', render: (c) => c.borrowerName ?? '—' },
-    { key: 'product', header: 'Mahsulot', render: (c) => PRODUCT_LABEL[c.productType] },
-    { key: 'branchSymbol', header: 'Filial', render: (c) => c.branchSymbol ?? '—' },
-    { key: 'amount', header: 'Summa', align: 'right', className: 'nums font-medium', render: (c) => formatMoney(c.amount) },
+    { key: 'borrowerName', header: 'Qarz oluvchi', sortable: true, render: (c) => c.borrowerName ?? '—' },
+    { key: 'product', header: 'Mahsulot', sortable: true, sortValue: (c) => PRODUCT_LABEL[c.productType], render: (c) => PRODUCT_LABEL[c.productType] },
+    { key: 'branchSymbol', header: 'Filial', sortable: true, render: (c) => c.branchSymbol ?? '—' },
+    { key: 'amount', header: 'Summa', align: 'right', className: 'nums font-medium', sortable: true, sortValue: (c) => c.amount ?? 0, render: (c) => formatMoney(c.amount) },
     {
-      key: 'status', header: 'Holat',
+      key: 'status', header: 'Holat', sortable: true, sortValue: (c) => c.status,
       render: (c) => (
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge status={c.status} />
@@ -78,10 +78,10 @@ export function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats ? (
           <>
-            <MetricCard icon={Layers} label="Jami ariza" value={String(stats.totalCases)} tone="brand" />
-            <MetricCard icon={FileCheck2} label="Yakunlangan" value={String(stats.finalizedCount)} tone="success" />
-            <MetricCard icon={Banknote} label="Jami summa" value={formatMoney(stats.totalAmount)} tone="warning" />
-            <MetricCard icon={Banknote} label="Jami KATM" value={formatMoney(stats.totalKatm)} tone="danger" />
+            <MetricCard className="cc-rise" icon={Layers} label="Jami ariza" value={String(stats.totalCases)} tone="brand" />
+            <MetricCard className="cc-rise [animation-delay:60ms]" icon={FileCheck2} label="Yakunlangan" value={String(stats.finalizedCount)} tone="success" />
+            <MetricCard className="cc-rise [animation-delay:120ms]" icon={Banknote} label="Jami summa" value={formatMoney(stats.totalAmount)} tone="warning" />
+            <MetricCard className="cc-rise [animation-delay:180ms]" icon={Banknote} label="Jami KATM" value={formatMoney(stats.totalKatm)} tone="danger" />
           </>
         ) : (
           [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[132px] rounded-2xl" />)

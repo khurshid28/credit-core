@@ -59,6 +59,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 <motion.div
                   key={t.id}
                   layout
+                  role={t.tone === 'error' ? 'alert' : 'status'}
+                  aria-live={t.tone === 'error' ? 'assertive' : 'polite'}
+                  aria-atomic
                   initial={{ opacity: 0, x: 40, scale: 0.96 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: 40, scale: 0.96 }}
@@ -76,7 +79,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     <p className="text-sm font-semibold text-gray-800 dark:text-white">{t.title}</p>
                     {t.message && <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{t.message}</p>}
                   </div>
-                  <button onClick={() => remove(t.id)} className="-mr-1 shrink-0 rounded-md p-0.5 text-gray-400 transition hover:text-gray-700 dark:hover:text-white">
+                  <button onClick={() => remove(t.id)} aria-label="Yopish" className="-mr-1 shrink-0 cursor-pointer rounded-md p-0.5 text-gray-400 transition hover:text-gray-700 dark:hover:text-white">
                     <X className="h-4 w-4" />
                   </button>
                 </motion.div>

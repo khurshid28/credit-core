@@ -115,12 +115,21 @@ export function useCaseForm(id?: string) {
     setWarnings(parsed.warnings);
   };
 
-  const valid = Boolean(
-    form.borrower.fullName && form.collaterals.length > 0 &&
-    form.collaterals.every((c) => (c.type === ProductType.AUTO ? c.model || c.stateNumber : c.address)),
-  );
+  const [attempted, setAttempted] = useState(false);
+
+  // Required-field errors (shown only after a save attempt — inline-validation).
+  const colError = (c: CollateralDto): string | undefined =>
+    c.type === ProductType.AUTO
+      ? c.model || c.stateNumber ? undefined : 'Model yoki davlat raqamini kiriting'
+      : c.address ? undefined : 'Manzilni kiriting';
+  const errors = {
+    fullName: form.borrower.fullName.trim() ? undefined : 'Qarz oluvchi F.I.O majburiy',
+    collaterals: form.collaterals.map(colError),
+  };
+  const valid = !errors.fullName && form.collaterals.length > 0 && errors.collaterals.every((e) => !e);
 
   const save = async () => {
+    if (!valid) { setAttempted(true); return undefined; }
     setSaving(true);
     try {
       const saved = editing ? await api.updateCase(id!, form) : await api.createCase(form);
@@ -148,14 +157,14 @@ export function useCaseForm(id?: string) {
     }
   };
 
-  return { editing, form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, valid, saving, save, docs, addDocs, removeDoc, setDocTitle, colDocs, addColDocs, removeColDoc, setColDocField };
+  return { editing, form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, valid, errors, attempted, saving, save, docs, addDocs, removeDoc, setDocTitle, colDocs, addColDocs, removeColDoc, setColDocField };
 }
 
 type FormApi = ReturnType<typeof useCaseForm>;
 
 /** Presentational form body (no page chrome) — reused in page and modal. */
 export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImport?: boolean }) {
-  const { form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, docs, addDocs, removeDoc, setDocTitle, colDocs, addColDocs, removeColDoc, setColDocField } = f;
+  const { form, setForm, setB, setCol, addCol, removeCol, addGuarantor, setG, removeG, onImport, warnings, errors, attempted, docs, addDocs, removeDoc, setDocTitle, colDocs, addColDocs, removeColDoc, setColDocField } = f;
   const fileRef = useRef<HTMLInputElement>(null);
   const passportRef = useRef<HTMLInputElement>(null);
   const extraRef = useRef<HTMLInputElement>(null);
@@ -193,7 +202,7 @@ export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImpor
         <Card className="space-y-4 lg:col-span-2">
           <h2 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/12 dark:text-brand-400"><User className="h-4 w-4" /></span>Qarz oluvchi</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="F.I.O" required icon={User}><Input value={form.borrower.fullName} onChange={(e) => setB({ fullName: e.target.value })} /></Field>
+            <Field label="F.I.O" required icon={User} error={attempted ? errors.fullName : undefined}><Input value={form.borrower.fullName} onChange={(e) => setB({ fullName: e.target.value })} /></Field>
             <Field label="PINFL" icon={Hashtag} hint="14 ta raqam"><Input inputMode="numeric" maxLength={14} value={form.borrower.pinfl ?? ''} onChange={(e) => setB({ pinfl: digitsOnly(e.target.value, 14) })} placeholder="12345678901234" /></Field>
             <Field label="Pasport seriya" icon={IdCard}><Input maxLength={2} value={form.borrower.passportSeries ?? ''} onChange={(e) => setB({ passportSeries: e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) })} placeholder="AA" /></Field>
             <Field label="Pasport raqami" icon={IdCard}><Input inputMode="numeric" maxLength={7} value={form.borrower.passportNumber ?? ''} onChange={(e) => setB({ passportNumber: digitsOnly(e.target.value, 7) })} placeholder="1234567" /></Field>
@@ -280,6 +289,7 @@ export function CaseFormFields({ f, showImport = true }: { f: FormApi; showImpor
           key={i}
           index={i}
           c={c}
+          error={attempted ? errors.collaterals[i] : undefined}
           onChange={(p) => setCol(i, p)}
           onRemove={() => removeCol(i)}
           canRemove={form.collaterals.length > 1}
@@ -302,6 +312,7 @@ export function CaseForm() {
 
   const onSave = async () => {
     const saved = await f.save();
+    if (!saved) { toast.error('Tekshirib chiqing', 'Majburiy maydonlar to‘ldirilmagan'); return; }
     toast.success(f.editing ? 'Ariza yangilandi' : 'Ariza yaratildi', saved.number);
     nav(`/cases/${saved.id}`);
   };
@@ -313,7 +324,7 @@ export function CaseForm() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{f.editing ? 'Arizani tahrirlash' : 'Yangi ariza'}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Qarz oluvchi va garov(lar) — uy-joy va/yoki avtotransport</p>
         </div>
-        <Button onClick={onSave} loading={f.saving} disabled={!f.valid}>
+        <Button onClick={onSave} loading={f.saving}>
           {!f.saving && <Save className="h-4 w-4" />} Saqlash
         </Button>
       </div>
@@ -331,6 +342,7 @@ export function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => 
 
   const onSave = async () => {
     const saved = await f.save();
+    if (!saved) { toast.error('Tekshirib chiqing', 'Majburiy maydonlar to‘ldirilmagan'); return; }
     toast.success('Ariza yaratildi', saved.number);
     onClose();
     nav(`/cases/${saved.id}`);
@@ -346,7 +358,7 @@ export function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => 
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Bekor qilish</Button>
-          <Button onClick={onSave} loading={f.saving} disabled={!f.valid}>
+          <Button onClick={onSave} loading={f.saving}>
             {!f.saving && <Save className="h-4 w-4" />} Saqlash
           </Button>
         </>
@@ -357,8 +369,8 @@ export function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
-function CollateralCard({ index, c, onChange, onRemove, canRemove, docs, onAddDocs, onRemoveDoc, onSetDocField }: {
-  index: number; c: CollateralDto; onChange: (p: Partial<CollateralDto>) => void; onRemove: () => void; canRemove: boolean;
+function CollateralCard({ index, c, error, onChange, onRemove, canRemove, docs, onAddDocs, onRemoveDoc, onSetDocField }: {
+  index: number; c: CollateralDto; error?: string; onChange: (p: Partial<CollateralDto>) => void; onRemove: () => void; canRemove: boolean;
   docs: StagedColDoc[]; onAddDocs: (files: FileList | File[] | null) => void; onRemoveDoc: (localId: string) => void;
   onSetDocField: (localId: string, patch: Partial<Pick<StagedColDoc, 'title' | 'description'>>) => void;
 }) {
@@ -380,7 +392,7 @@ function CollateralCard({ index, c, onChange, onRemove, canRemove, docs, onAddDo
 
       {isAuto ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Model (markasi)" required icon={Car}>
+          <Field label="Model (markasi)" required icon={Car} error={error}>
             <Select<string> value={c.model ?? ''} onChange={(v) => onChange({ model: v })} searchable placeholder="— mashinani tanlang —"
               options={CAR_MODELS.map((m) => ({ value: m, label: m }))} />
           </Field>
@@ -396,7 +408,7 @@ function CollateralCard({ index, c, onChange, onRemove, canRemove, docs, onAddDo
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Manzil" required className="sm:col-span-2" icon={Location}><Input value={c.address ?? ''} onChange={(e) => onChange({ address: e.target.value })} /></Field>
+          <Field label="Manzil" required className="sm:col-span-2" icon={Location} error={error}><Input value={c.address ?? ''} onChange={(e) => onChange({ address: e.target.value })} /></Field>
           <Field label="Reestr №" icon={Hashtag}><Input value={c.registryNo ?? ''} onChange={(e) => onChange({ registryNo: e.target.value })} /></Field>
           <Field label="Kadastr №" icon={Hashtag}><Input value={c.cadastreNo ?? ''} onChange={(e) => onChange({ cadastreNo: e.target.value })} /></Field>
           <Field label="Mulk turi" icon={House}><Input value={c.propertyType ?? ''} onChange={(e) => onChange({ propertyType: e.target.value })} /></Field>

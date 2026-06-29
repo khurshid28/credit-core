@@ -38,6 +38,77 @@ h3 {
   font-feature-settings: 'tnum' 1;
 }
 
+/* Kill the 300ms tap delay on touch + tidy tap highlight (tap-delay). */
+a,
+button,
+[role='button'],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Skeleton shimmer — a light sweep that reads as "loading" without a spinner
+   (progressive-loading). Theme-aware base + highlight; reduced-motion freezes it. */
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    theme('colors.gray.200') 25%,
+    theme('colors.gray.100') 37%,
+    theme('colors.gray.200') 63%
+  );
+  background-size: 400% 100%;
+  animation: cc-shimmer 1.4s ease-in-out infinite;
+}
+.dark .skeleton {
+  background-image: linear-gradient(
+    90deg,
+    theme('colors.gray.800') 25%,
+    theme('colors.gray.700') 37%,
+    theme('colors.gray.800') 63%
+  );
+}
+@keyframes cc-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+/* Entrance: gentle rise + fade for cards/sections. `both` fill keeps the end
+   state, so under reduced-motion (duration ~0) content stays fully visible. */
+.cc-rise {
+  animation: cc-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Page-level route transition — a quick crossfade, applied to the keyed main
+   wrapper so every navigation feels continuous (opacity only, so it never
+   compounds awkwardly with element-level rise/stagger). */
+.cc-fade {
+  animation: cc-fade 0.28s ease-out both;
+}
+@keyframes cc-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Hidden scrollbar for sidebar nav (TailAdmin-style chrome). */
 .no-scrollbar {
   -ms-overflow-style: none;
