@@ -1,11 +1,13 @@
 import { Body, Controller, Get, Injectable, Module, Put, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsBoolean, IsEnum, IsInt, IsNumber, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsBoolean, IsEnum, IsInt, IsNumber, Max, Min, Validate, ValidateNested, ValidationArguments, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
 import { addBusinessDays, AppConfigDto, CaseStatus, DEADLINE_STEPS, StepDeadlineSetting } from '@credit-core/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
+import { AuditService } from '../audit/audit.service';
 import { Role } from '@credit-core/shared';
 
 class DeadlineItemDto {
@@ -22,19 +24,30 @@ class UpdateDeadlinesDto {
   items!: DeadlineItemDto[];
 }
 
+@ValidatorConstraint({ name: 'minLeMax' })
+class MinLeMax implements ValidatorConstraintInterface {
+  validate(_: number, args: ValidationArguments) {
+    const o = args.object as ConfigDto;
+    return o.minRate <= o.maxRate;
+  }
+  defaultMessage() {
+    return 'Min yillik foiz Max dan katta bo‘lmasligi kerak';
+  }
+}
+
 class ConfigDto {
   @IsInt() @Min(0) @Max(60) maxPauseDays!: number;
   @IsNumber() @Min(0) @Max(5) markupPercent!: number;
   @IsNumber() @Min(0) @Max(5) bankRate!: number;
   @IsNumber() @Min(0) @Max(5) taxRate!: number;
   @IsNumber() @Min(0) @Max(5) nplRate!: number;
-  @IsNumber() @Min(0) @Max(5) minRate!: number;
+  @IsNumber() @Min(0) @Max(5) @Validate(MinLeMax) minRate!: number;
   @IsNumber() @Min(0) @Max(5) maxRate!: number;
 }
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   /** All deadline steps with their configured business days + enabled (defaults: 2, on). */
   async getDeadlines(): Promise<StepDeadlineSetting[]> {
@@ -83,9 +96,12 @@ export class SettingsService {
     return { maxPauseDays: c.maxPauseDays, markupPercent: c.markupPercent, bankRate: c.bankRate, taxRate: c.taxRate, nplRate: c.nplRate, minRate: c.minRate, maxRate: c.maxRate };
   }
 
-  async updateConfig(dto: ConfigDto): Promise<AppConfigDto> {
+  async updateConfig(dto: ConfigDto, user: RequestUser): Promise<AppConfigDto> {
+    const before = await this.getConfig();
     await this.prisma.appConfig.upsert({ where: { id: 'default' }, create: { id: 'default', ...dto }, update: { ...dto } });
-    return this.getConfig();
+    const after = await this.getConfig();
+    await this.audit.configChange(user, before, after);
+    return after;
   }
 }
 
@@ -114,8 +130,8 @@ class SettingsController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Put('config')
-  updateConfig(@Body() dto: ConfigDto) {
-    return this.service.updateConfig(dto);
+  updateConfig(@CurrentUser() user: RequestUser, @Body() dto: ConfigDto) {
+    return this.service.updateConfig(dto, user);
   }
 }
 
