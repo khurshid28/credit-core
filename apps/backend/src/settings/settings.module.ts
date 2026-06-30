@@ -6,6 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
+import { AuditService } from '../audit/audit.service';
 import { Role } from '@credit-core/shared';
 
 class DeadlineItemDto {
@@ -34,7 +36,7 @@ class ConfigDto {
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   /** All deadline steps with their configured business days + enabled (defaults: 2, on). */
   async getDeadlines(): Promise<StepDeadlineSetting[]> {
@@ -83,9 +85,12 @@ export class SettingsService {
     return { maxPauseDays: c.maxPauseDays, markupPercent: c.markupPercent, bankRate: c.bankRate, taxRate: c.taxRate, nplRate: c.nplRate, minRate: c.minRate, maxRate: c.maxRate };
   }
 
-  async updateConfig(dto: ConfigDto): Promise<AppConfigDto> {
+  async updateConfig(dto: ConfigDto, user: RequestUser): Promise<AppConfigDto> {
+    const before = await this.getConfig();
     await this.prisma.appConfig.upsert({ where: { id: 'default' }, create: { id: 'default', ...dto }, update: { ...dto } });
-    return this.getConfig();
+    const after = await this.getConfig();
+    await this.audit.configChange(user, before, after);
+    return after;
   }
 }
 
@@ -114,8 +119,8 @@ class SettingsController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Put('config')
-  updateConfig(@Body() dto: ConfigDto) {
-    return this.service.updateConfig(dto);
+  updateConfig(@CurrentUser() user: RequestUser, @Body() dto: ConfigDto) {
+    return this.service.updateConfig(dto, user);
   }
 }
 

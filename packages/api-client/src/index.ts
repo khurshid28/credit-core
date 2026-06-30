@@ -113,8 +113,8 @@ export const api = {
     const { data } = await http.patch<CreditCaseDto>(`/cases/${id}/section`, payload);
     return data;
   },
-  async setCaseRate(id: string, interestRate: number): Promise<CreditCaseDto> {
-    const { data } = await http.patch<CreditCaseDto>(`/cases/${id}/rate`, { interestRate });
+  async setCaseRate(id: string, interestRate: number, reason: string): Promise<CreditCaseDto> {
+    const { data } = await http.patch<CreditCaseDto>(`/cases/${id}/rate`, { interestRate, reason });
     return data;
   },
   async transition(id: string, payload: TransitionPayload): Promise<CreditCaseDto> {

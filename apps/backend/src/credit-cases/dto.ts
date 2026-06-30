@@ -221,6 +221,7 @@ export class SetKatmPriceDto {
 
 export class SetRateDto {
   @IsNumber() @Min(0) interestRate!: number;
+  @IsString() @MinLength(1) reason!: string;
 }
 
 export class CaseSectionDto {

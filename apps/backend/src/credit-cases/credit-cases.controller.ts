@@ -66,22 +66,22 @@ export class CreditCasesController {
   @UseGuards(RolesGuard)
   @Roles(Role.MODERATOR, Role.DIRECTOR, Role.ADMIN)
   @Post(':id/pause')
-  pause(@Param('id') id: string, @Body() body?: { days?: number }) {
-    return this.service.pause(id, body?.days);
+  pause(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() body?: { days?: number }) {
+    return this.service.pause(id, user, body?.days);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.MODERATOR, Role.DIRECTOR, Role.ADMIN)
   @Post(':id/resume')
-  resume(@Param('id') id: string) {
-    return this.service.resume(id);
+  resume(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.service.resume(id, user);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Put(':id/katm-price')
-  setKatmPrice(@Param('id') id: string, @Body() dto: SetKatmPriceDto) {
-    return this.service.setKatmPrice(id, dto.katmPrice);
+  setKatmPrice(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() dto: SetKatmPriceDto) {
+    return this.service.setKatmPrice(id, user, dto.katmPrice);
   }
 
   @UseGuards(RolesGuard)
@@ -95,6 +95,6 @@ export class CreditCasesController {
   @Roles(Role.MODERATOR, Role.ADMIN)
   @Patch(':id/rate')
   setRate(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() dto: SetRateDto) {
-    return this.service.setRate(id, user, dto.interestRate);
+    return this.service.setRate(id, user, dto.interestRate, dto.reason);
   }
 }

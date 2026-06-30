@@ -1,0 +1,44 @@
+import { Injectable } from '@nestjs/common';
+import { AuditAction, Role } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { RequestUser } from '../auth/current-user.decorator';
+
+/** Serialize an audit value to its stored text form (null for empty). */
+export const stringifyValue = (v: unknown): string | null =>
+  v === null || v === undefined ? null : typeof v === 'object' ? JSON.stringify(v) : String(v);
+
+@Injectable()
+export class AuditService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private write(action: AuditAction, user: RequestUser, p: { caseId?: string | null; field?: string; oldValue?: unknown; newValue?: unknown; reason?: string }) {
+    return this.prisma.auditLog.create({
+      data: {
+        action,
+        actorId: user.id,
+        role: user.role as Role,
+        caseId: p.caseId ?? null,
+        field: p.field ?? null,
+        oldValue: stringifyValue(p.oldValue),
+        newValue: stringifyValue(p.newValue),
+        reason: p.reason ?? null,
+      },
+    });
+  }
+
+  rateChange(u: RequestUser, caseId: string, oldRate: unknown, newRate: unknown, reason: string) {
+    return this.write('RATE_CHANGE', u, { caseId, field: 'interestRate', oldValue: oldRate, newValue: newRate, reason });
+  }
+  katmPrice(u: RequestUser, caseId: string, oldV: unknown, newV: unknown) {
+    return this.write('KATM_PRICE', u, { caseId, field: 'katmPrice', oldValue: oldV, newValue: newV });
+  }
+  configChange(u: RequestUser, oldV: unknown, newV: unknown) {
+    return this.write('CONFIG_CHANGE', u, { field: 'appConfig', oldValue: oldV, newValue: newV });
+  }
+  pause(u: RequestUser, caseId: string) { return this.write('PAUSE', u, { caseId }); }
+  resume(u: RequestUser, caseId: string) { return this.write('RESUME', u, { caseId }); }
+  caseCreate(u: RequestUser, caseId: string) { return this.write('CASE_CREATE', u, { caseId }); }
+  caseUpdate(u: RequestUser, caseId: string) { return this.write('CASE_UPDATE', u, { caseId }); }
+  sectionSave(u: RequestUser, caseId: string, section: string) { return this.write('SECTION_SAVE', u, { caseId, field: section }); }
+  transition(u: RequestUser, caseId: string, from: unknown, to: unknown) { return this.write('TRANSITION', u, { caseId, field: 'status', oldValue: from, newValue: to }); }
+}

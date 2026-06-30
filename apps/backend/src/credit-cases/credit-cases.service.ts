@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { addBusinessDays, CaseStatus, DocumentType, hasDeadline, loanRuleViolations, originationPersistedValues, ProductType, Role } from '@credit-core/shared';
+import { addBusinessDays, CaseStatus, DocumentType, hasDeadline, isCaseInScope, loanRuleViolations, originationPersistedValues, ProductType, Role } from '@credit-core/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { RequestUser } from '../auth/current-user.decorator';
+import { AuditService } from '../audit/audit.service';
 import { WorkflowService } from './workflow.service';
 import { caseInclude, toCaseDto, toListItem } from './case.mapper';
 import {
@@ -18,6 +19,7 @@ export class CreditCasesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workflow: WorkflowService,
+    private readonly audit: AuditService,
   ) {}
 
   private async nextNumber(branchSymbol: string | null): Promise<string> {
@@ -155,10 +157,17 @@ export class CreditCasesService {
       },
       include: caseInclude,
     });
+    await this.audit.caseCreate(user, created.id);
     return toCaseDto(created);
   }
 
   async updateCase(id: string, user: RequestUser, dto: UpsertCaseDto) {
+    const res = await this.applyUpdate(id, user, dto);
+    await this.audit.caseUpdate(user, id);
+    return res;
+  }
+
+  private async applyUpdate(id: string, user: RequestUser, dto: UpsertCaseDto) {
     const existing = await this.prisma.creditCase.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Ariza topilmadi');
     if (existing.status !== CaseStatus.DRAFT) {
@@ -316,7 +325,7 @@ export class CreditCasesService {
    * `days` is the business-day pause window chosen by the user, clamped to the admin
    * maximum (maxPauseDays). The case auto-resumes at `pauseUntil` if not resumed sooner.
    */
-  async pause(id: string, days?: number) {
+  async pause(id: string, user: RequestUser, days?: number) {
     const c = await this.prisma.creditCase.findUnique({ where: { id } });
     if (!c) throw new NotFoundException('Ariza topilmadi');
     if (!hasDeadline(c.status)) throw new ForbiddenException('Faqat aktiv bosqichdagi arizani pauzaga qo‘yish mumkin');
@@ -329,11 +338,12 @@ export class CreditCasesService {
       where: { id },
       data: { pausedAt: now, pauseUntil: addBusinessDays(now, window) },
     });
+    await this.audit.pause(user, id);
     return this.getOne(id);
   }
 
   /** Resume a paused case — shifts its deadline forward by the paused time (capped at the pause window). */
-  async resume(id: string) {
+  async resume(id: string, user: RequestUser) {
     const c = await this.prisma.creditCase.findUnique({ where: { id } });
     if (!c) throw new NotFoundException('Ariza topilmadi');
     if (!c.pausedAt) return this.getOne(id);
@@ -349,6 +359,7 @@ export class CreditCasesService {
       where: { id },
       data: { pausedAt: null, pauseUntil: null, stepDeadlineAt: newDeadline, overdueNotified: false },
     });
+    await this.audit.resume(user, id);
     return this.getOne(id);
   }
 
@@ -395,11 +406,14 @@ export class CreditCasesService {
       }),
     ]);
 
+    await this.audit.transition(user, id, c.status, rule.to);
     return this.getOne(id);
   }
 
-  async setKatmPrice(id: string, katmPrice: number) {
+  async setKatmPrice(id: string, user: RequestUser, katmPrice: number) {
+    const before = await this.prisma.creditCase.findUnique({ where: { id }, select: { katmPrice: true } });
     await this.prisma.creditCase.update({ where: { id }, data: { katmPrice } });
+    await this.audit.katmPrice(user, id, before?.katmPrice != null ? Number(before.katmPrice) : null, katmPrice);
     return this.getOne(id);
   }
 
@@ -416,25 +430,34 @@ export class CreditCasesService {
       creditLine: dto.section === 'creditLine' ? base.creditLine : undefined,
       creditHistory: dto.section === 'creditHistory' ? base.creditHistory : undefined,
     };
-    return this.updateCase(id, user, masked);
+    const res = await this.applyUpdate(id, user, masked);
+    await this.audit.sectionSave(user, id, dto.section);
+    return res;
   }
 
   /** Moderator/admin raise the per-case lending rate within the admin [min,max] bounds (MODERATION only). */
-  async setRate(id: string, user: RequestUser, interestRate: number) {
+  async setRate(id: string, user: RequestUser, interestRate: number, reason: string) {
     if (user.role !== Role.MODERATOR && user.role !== Role.ADMIN) {
       throw new ForbiddenException('Foizni faqat moderator yoki admin o‘zgartiradi');
     }
     const c = await this.prisma.creditCase.findUnique({ where: { id }, include: { creditLine: true } });
     if (!c) throw new NotFoundException('Ariza topilmadi');
     if (c.status !== CaseStatus.MODERATION) throw new ForbiddenException('Faqat moderatsiya bosqichida foizni o‘zgartirish mumkin');
-    const cfg = await this.prisma.appConfig.findUnique({ where: { id: 'default' } });
-    const min = cfg?.minRate ?? 0.55;
-    const max = cfg?.maxRate ?? 0.6;
+    // A moderator may only adjust cases in their assigned branches (same scope as list()).
+    if (user.role === Role.MODERATOR) {
+      const assigned = await this.prisma.branch.findMany({ where: { moderators: { some: { id: user.id } } }, select: { id: true } });
+      if (!isCaseInScope(assigned.map((b) => b.id), c.branchId)) {
+        throw new ForbiddenException('Bu ariza sizning filialingizga tegishli emas');
+      }
+    }
+    if (!c.creditLine) throw new NotFoundException('Kredit liniyasi to‘ldirilmagan');
+    const { min, max } = await this.loadRates();
     if (!isRateInBounds(interestRate, min, max)) {
       throw new ForbiddenException(`Foiz ${Math.round(min * 100)}% va ${Math.round(max * 100)}% oralig‘ida bo‘lishi kerak`);
     }
-    if (!c.creditLine) throw new NotFoundException('Kredit liniyasi to‘ldirilmagan');
+    const oldRate = c.creditLine.interestRate != null ? Number(c.creditLine.interestRate) : null;
     await this.prisma.creditLine.update({ where: { caseId: id }, data: { interestRate } });
+    await this.audit.rateChange(user, id, oldRate, interestRate, reason);
     return this.getOne(id);
   }
 }
