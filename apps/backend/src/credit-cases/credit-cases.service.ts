@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { addBusinessDays, CaseStatus, DocumentType, hasDeadline, ProductType, Role } from '@credit-core/shared';
+import { addBusinessDays, CaseStatus, DocumentType, hasDeadline, loanRuleViolations, originationPersistedValues, ProductType, Role } from '@credit-core/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { RequestUser } from '../auth/current-user.decorator';
 import { WorkflowService } from './workflow.service';
@@ -25,6 +25,31 @@ export class CreditCasesService {
     const prefix = `${branchSymbol ?? 'GEN'}-${year}-`;
     const count = await this.prisma.creditCase.count({ where: { number: { startsWith: prefix } } });
     return `${prefix}${String(count + 1).padStart(4, '0')}`;
+  }
+
+  /** Client lending-rate bounds from the singleton config (with defaults). */
+  private async loadRates(): Promise<{ min: number; max: number }> {
+    const cfg = await this.prisma.appConfig.findUnique({ where: { id: 'default' } });
+    return { min: cfg?.minRate ?? 0.55, max: cfg?.maxRate ?? 0.6 };
+  }
+
+  /** Server-authoritative loan-rule guard (term caps). Throws on violation. */
+  private assertRules(dto: UpsertCaseDto) {
+    const l = dto.creditLine;
+    const errs = loanRuleViolations({
+      scheduleType: l?.tranche?.scheduleType ?? null,
+      trancheTermMonths: l?.tranche?.termMonths ?? null,
+      lineTermMonths: l?.termMonths ?? null,
+    });
+    if (errs.length) throw new ForbiddenException(errs.join('; '));
+  }
+
+  /** Backfill the affordability new-loan payment from the tranche so the stored DTI matches the UI. */
+  private fillDerived(dto: UpsertCaseDto) {
+    const mp = dto.creditLine?.tranche?.monthlyPayment;
+    if (dto.affordability && dto.affordability.newLoanPayment == null && mp != null) {
+      dto.affordability.newLoanPayment = mp;
+    }
   }
 
   private collateralCreate(c: CollateralInput): Prisma.CollateralCreateWithoutCaseInput {
@@ -56,15 +81,22 @@ export class CreditCasesService {
     };
   }
 
-  private creditLineNested(l: CreditLineInput) {
+  private creditLineNested(l: CreditLineInput, rate: number) {
     const t = l.tranche ?? null;
     const ins = l.insurance ?? null;
+    const d = originationPersistedValues({
+      amountTotal: l.amountTotal ?? null,
+      loanUnderPolicy: ins?.loanUnderPolicy ?? null,
+      insuranceRate: ins?.insuranceRate ?? null,
+      policyTermMonths: ins?.policyTermMonths ?? null,
+      trancheMonthlyPayment: t?.monthlyPayment ?? null,
+    });
     return {
-      lineNumber: l.lineNumber ?? null, loanType: l.loanType ?? null,
+      lineNumber: l.lineNumber ?? null, loanType: d.loanType,
       amountAuto: l.amountAuto ?? null, amountPolis: l.amountPolis ?? null, amountTotal: l.amountTotal ?? null,
       termMonths: l.termMonths ?? null, lineDate: parseDate(l.lineDate), lineMaturity: parseDate(l.lineMaturity),
-      interestRate: l.interestRate ?? null, penaltyRate: l.penaltyRate ?? null, orderNumber: l.orderNumber ?? null,
-      ...(ins ? { insurance: { create: { insured: ins.insured ?? false, company: ins.company ?? null, genAgreementNo: ins.genAgreementNo ?? null, genAgreementDate: parseDate(ins.genAgreementDate), policyNo: ins.policyNo ?? null, policyIssueDate: parseDate(ins.policyIssueDate), policyTermMonths: ins.policyTermMonths ?? null, policyExpiry: parseDate(ins.policyExpiry), loanUnderPolicy: ins.loanUnderPolicy ?? null, insuredSum: ins.insuredSum ?? null, insuranceRate: ins.insuranceRate ?? null, premium: ins.premium ?? null } } } : {}),
+      interestRate: rate, penaltyRate: l.penaltyRate ?? 1.05, orderNumber: l.orderNumber ?? null,
+      ...(ins ? { insurance: { create: { insured: ins.insured ?? false, company: ins.company ?? null, genAgreementNo: ins.genAgreementNo ?? null, genAgreementDate: parseDate(ins.genAgreementDate), policyNo: ins.policyNo ?? null, policyIssueDate: parseDate(ins.policyIssueDate), policyTermMonths: ins.policyTermMonths ?? null, policyExpiry: parseDate(ins.policyExpiry), loanUnderPolicy: ins.loanUnderPolicy ?? null, insuredSum: d.insuredSum, insuranceRate: ins.insuranceRate ?? null, premium: d.premium } } } : {}),
       ...(t ? { tranches: { create: [{ trancheNo: t.trancheNo ?? 1, applicationNo: t.applicationNo ?? null, applicationDate: parseDate(t.applicationDate), contractNo: t.contractNo ?? null, contractDate: parseDate(t.contractDate), principal: t.principal ?? null, termMonths: t.termMonths ?? null, maturity: parseDate(t.maturity), scheduleType: t.scheduleType ?? null, monthlyPayment: t.monthlyPayment ?? null, insurancePayment: t.insurancePayment ?? null }] } } : {}),
     };
   }
@@ -98,24 +130,28 @@ export class CreditCasesService {
       ? await this.prisma.branch.findUnique({ where: { id: user.branchId } })
       : null;
     const number = await this.nextNumber(branch?.symbol ?? null);
-    const productType = dto.collaterals[0]?.type ?? ProductType.REAL_ESTATE;
+    const productType = dto.collaterals?.[0]?.type ?? ProductType.REAL_ESTATE;
+    this.assertRules(dto);
+    this.fillDerived(dto);
+    const { min } = await this.loadRates();
+    const amount = dto.creditLine?.amountTotal ?? dto.amount ?? null;
 
     const created = await this.prisma.creditCase.create({
       data: {
         number,
         productType,
         status: CaseStatus.DRAFT,
-        amount: dto.amount ?? null,
+        amount,
         termMonths: dto.termMonths ?? null,
         branchId: user.branchId,
         createdById: user.id,
         borrower: { create: this.borrowerData(dto.borrower) },
         guarantors: { create: (dto.guarantors ?? []).map((g) => ({ ...g })) },
-        collaterals: { create: dto.collaterals.map((c) => this.collateralCreate(c)) },
+        collaterals: { create: (dto.collaterals ?? []).map((c) => this.collateralCreate(c)) },
         ...(dto.employment ? { employment: { create: this.employmentData(dto.employment) } } : {}),
         ...(dto.affordability ? { affordability: { create: this.affordabilityData(dto.affordability) } } : {}),
         ...(dto.creditHistory ? { creditHistory: { create: this.creditHistoryData(dto.creditHistory) } } : {}),
-        ...(dto.creditLine ? { creditLine: { create: this.creditLineNested(dto.creditLine) } } : {}),
+        ...(dto.creditLine ? { creditLine: { create: this.creditLineNested(dto.creditLine, min) } } : {}),
       },
       include: caseInclude,
     });
@@ -131,14 +167,21 @@ export class CreditCasesService {
     if (user.role === Role.OPERATOR && existing.createdById !== user.id) {
       throw new ForbiddenException('Bu ariza sizga tegishli emas');
     }
+    this.assertRules(dto);
+    this.fillDerived(dto);
+
+    const { min } = await this.loadRates();
+    // Preserve a moderator-raised rate across a later DRAFT re-save (operator never sets the rate).
+    const existingLine = await this.prisma.creditLine.findUnique({ where: { caseId: id }, select: { interestRate: true } });
+    const lineRate = existingLine?.interestRate != null ? Number(existingLine.interestRate) : min;
 
     await this.prisma.$transaction([
       this.prisma.creditCase.update({
         where: { id },
         data: {
-          amount: dto.amount ?? null,
-          termMonths: dto.termMonths ?? null,
-          productType: dto.collaterals[0]?.type ?? existing.productType,
+          amount: dto.creditLine?.amountTotal ?? dto.amount ?? existing.amount,
+          termMonths: dto.termMonths ?? existing.termMonths,
+          ...(dto.collaterals !== undefined ? { productType: dto.collaterals[0]?.type ?? existing.productType } : {}),
         },
       }),
       this.prisma.borrower.upsert({
@@ -146,16 +189,20 @@ export class CreditCasesService {
         create: { caseId: id, ...this.borrowerData(dto.borrower) },
         update: this.borrowerData(dto.borrower),
       }),
-      this.prisma.guarantor.deleteMany({ where: { caseId: id } }),
-      ...(dto.guarantors ?? []).map((g) => this.prisma.guarantor.create({ data: { caseId: id, ...g } })),
-      this.prisma.collateral.deleteMany({ where: { caseId: id } }),
-      ...dto.collaterals.map((c) =>
-        this.prisma.collateral.create({ data: { caseId: id, ...this.collateralCreate(c) } }),
-      ),
+      // Only churn guarantors/collaterals when that section is actually being saved
+      // (so a later-step autosave can't wipe rows or reset collateral IDs — review #3).
+      ...(dto.guarantors !== undefined ? [
+        this.prisma.guarantor.deleteMany({ where: { caseId: id } }),
+        ...(dto.guarantors ?? []).map((g) => this.prisma.guarantor.create({ data: { caseId: id, ...g } })),
+      ] : []),
+      ...(dto.collaterals !== undefined ? [
+        this.prisma.collateral.deleteMany({ where: { caseId: id } }),
+        ...dto.collaterals.map((c) => this.prisma.collateral.create({ data: { caseId: id, ...this.collateralCreate(c) } })),
+      ] : []),
       ...(dto.employment ? [this.prisma.employment.upsert({ where: { caseId: id }, create: { caseId: id, ...this.employmentData(dto.employment) }, update: this.employmentData(dto.employment) })] : []),
       ...(dto.affordability ? [this.prisma.affordability.upsert({ where: { caseId: id }, create: { caseId: id, ...this.affordabilityData(dto.affordability) }, update: this.affordabilityData(dto.affordability) })] : []),
       ...(dto.creditHistory ? [this.prisma.creditHistory.upsert({ where: { caseId: id }, create: { caseId: id, ...this.creditHistoryData(dto.creditHistory) }, update: this.creditHistoryData(dto.creditHistory) })] : []),
-      ...(dto.creditLine ? [this.prisma.creditLine.deleteMany({ where: { caseId: id } }), this.prisma.creditLine.create({ data: { caseId: id, ...this.creditLineNested(dto.creditLine) } })] : []),
+      ...(dto.creditLine ? [this.prisma.creditLine.deleteMany({ where: { caseId: id } }), this.prisma.creditLine.create({ data: { caseId: id, ...this.creditLineNested(dto.creditLine, lineRate) } })] : []),
     ]);
 
     return this.getOne(id);
@@ -306,8 +353,23 @@ export class CreditCasesService {
   }
 
   async transition(id: string, user: RequestUser, dto: TransitionDto) {
-    const c = await this.prisma.creditCase.findUnique({ where: { id }, include: { documents: true } });
+    const c = await this.prisma.creditCase.findUnique({
+      where: { id },
+      include: { documents: true, collaterals: { select: { id: true } }, creditLine: { include: { tranches: true } } },
+    });
     if (!c) throw new NotFoundException('Ariza topilmadi');
+
+    // Submit-time (DRAFT → next) server-authoritative gate: ≥1 collateral + term caps.
+    if (c.status === CaseStatus.DRAFT) {
+      if (!c.collaterals.length) throw new ForbiddenException('Kamida bitta garov kiritilishi shart');
+      const tr = c.creditLine?.tranches[0];
+      const errs = loanRuleViolations({
+        scheduleType: (tr?.scheduleType ?? null) as 'ANNUITY' | 'DIFFERENTIATED' | null,
+        trancheTermMonths: tr?.termMonths ?? null,
+        lineTermMonths: c.creditLine?.termMonths ?? null,
+      });
+      if (errs.length) throw new ForbiddenException(errs.join('; '));
+    }
 
     const rule = this.workflow.resolve({
       currentStatus: c.status,
@@ -346,7 +408,9 @@ export class CreditCasesService {
     const base = dto.data;
     const masked: UpsertCaseDto = {
       amount: base.amount, termMonths: base.termMonths,
-      borrower: base.borrower, guarantors: base.guarantors, collaterals: base.collaterals,
+      borrower: base.borrower,
+      guarantors: dto.section === 'borrower' ? base.guarantors : undefined,
+      collaterals: dto.section === 'creditLine' ? base.collaterals : undefined,
       employment: dto.section === 'employment' ? base.employment : undefined,
       affordability: dto.section === 'affordability' ? base.affordability : undefined,
       creditLine: dto.section === 'creditLine' ? base.creditLine : undefined,

@@ -195,11 +195,14 @@ export class UpsertCaseDto {
   @Type(() => GuarantorInput)
   guarantors?: GuarantorInput[];
 
+  // Optional so per-step autosave (which omits sections it isn't saving) validates;
+  // the ≥1-collateral requirement is enforced at the submit transition instead.
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CollateralInput)
-  collaterals!: CollateralInput[];
+  collaterals?: CollateralInput[];
 
   @IsOptional() @ValidateNested() @Type(() => EmploymentInput) employment?: EmploymentInput | null;
   @IsOptional() @ValidateNested() @Type(() => AffordabilityInput) affordability?: AffordabilityInput | null;
