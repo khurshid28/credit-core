@@ -19,7 +19,7 @@ import { useToast } from '../components/Toast';
 import { cn, formatMoney } from '../lib/cn';
 
 const uploadTypes: DocumentType[] = [
-  DocumentType.NOTARY, DocumentType.SCAN, DocumentType.COLLATERAL_PHOTO, DocumentType.TECH_PASSPORT,
+  DocumentType.PASSPORT, DocumentType.NOTARY, DocumentType.SCAN, DocumentType.COLLATERAL_PHOTO, DocumentType.TECH_PASSPORT,
 ];
 
 export function CaseView() {
@@ -112,7 +112,7 @@ export function CaseView() {
           <p className="text-sm text-gray-500 dark:text-gray-400">{PRODUCT_LABEL[c.productType]} • {c.branch?.name ?? '—'}</p>
         </div>
         {isOperatorDraft && (
-          <Link to={`/cases/${c.id}/edit`}><Button variant="secondary"><Pencil className="h-5 w-5" /> Tahrirlash</Button></Link>
+          <Link to={`/cases/${c.id}/origination`}><Button variant="secondary"><Pencil className="h-5 w-5" /> Tahrirlash</Button></Link>
         )}
       </div>
 
