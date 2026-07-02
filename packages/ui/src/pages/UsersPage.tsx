@@ -10,12 +10,9 @@ import { useToast } from '../components/Toast';
 import { DataTable, type Column } from '../components/DataTable';
 import { useAuth } from '../lib/auth';
 import { copyText } from '../lib/clipboard';
+import { roleTone, initials } from '../lib/roles';
 
 const ROLES: Role[] = [Role.OPERATOR, Role.MODERATOR, Role.DIRECTOR, Role.ADMIN];
-const roleTone: Record<Role, string> = {
-  [Role.OPERATOR]: 'bg-brand-600', [Role.MODERATOR]: 'bg-warning-600', [Role.DIRECTOR]: 'bg-violet-600', [Role.ADMIN]: 'bg-gray-800 dark:bg-gray-600',
-};
-const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
 interface UserRow { id: string; fullName: string; login: string; phone?: string | null; role: Role; isActive: boolean; plainPassword?: string | null; avatarPath?: string | null; branchId?: string | null; branch?: { name: string } | null; moderatedBranches?: { id: string; name: string }[] }
 

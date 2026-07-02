@@ -222,8 +222,6 @@ export interface CaseParticipantDto {
   id: string;
   fullName: string;
   role: Role;
-  avatarPath: string | null;
-  isActive: boolean;
 }
 
 export interface MessageDto {

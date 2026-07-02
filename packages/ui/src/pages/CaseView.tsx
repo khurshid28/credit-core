@@ -22,6 +22,29 @@ const uploadTypes: DocumentType[] = [
   DocumentType.PASSPORT, DocumentType.NOTARY, DocumentType.SCAN, DocumentType.COLLATERAL_PHOTO, DocumentType.TECH_PASSPORT,
 ];
 
+const decisionLabel: Record<WorkflowDecision, string> = {
+  [WorkflowDecision.SUBMIT]: 'Yuborish', [WorkflowDecision.APPROVE]: 'Tasdiqlash',
+  [WorkflowDecision.RETURN]: 'Qaytarish', [WorkflowDecision.FINALIZE]: 'Yakunlash',
+  [WorkflowDecision.CANCEL]: 'Bekor qilish', [WorkflowDecision.REOPEN]: 'Qayta to‘ldirishga qaytarish',
+};
+const decisionIcon: Record<WorkflowDecision, React.ComponentType<{ className?: string }>> = {
+  [WorkflowDecision.SUBMIT]: Send, [WorkflowDecision.APPROVE]: CheckCircle2,
+  [WorkflowDecision.RETURN]: RotateCcw, [WorkflowDecision.FINALIZE]: Flag,
+  [WorkflowDecision.CANCEL]: X, [WorkflowDecision.REOPEN]: RotateCcw,
+};
+// "Yuborish" reads as its destination — the operator sees "Moderatorga yuborish", so it's clear
+// where the case goes next (operator → moderator → director → admin).
+const sendTarget: Partial<Record<CaseStatus, Role>> = {
+  [CaseStatus.MODERATION]: Role.MODERATOR,
+  [CaseStatus.DIRECTOR_REVIEW]: Role.DIRECTOR,
+  [CaseStatus.ADMIN_FINALIZE]: Role.ADMIN,
+};
+function transitionLabel(t: { to: CaseStatus; decision: WorkflowDecision }) {
+  const target = sendTarget[t.to];
+  const relabel = t.decision === WorkflowDecision.SUBMIT || t.decision === WorkflowDecision.APPROVE;
+  return target && relabel ? `${ROLE_LABEL[target]}ga yuborish` : decisionLabel[t.decision];
+}
+
 /** A compact launcher tile — icon + label + count/hint — opening a section modal or navigating. */
 function LauncherTile({
   icon: Icon, label, hint, onClick, ariaLabel, trailing,
@@ -113,27 +136,6 @@ export function CaseView() {
   const generalDocs = c.documents.filter((d) => !d.collateralId);
   const generalDocsCount = generalDocs.length;
 
-  const decisionLabel: Record<WorkflowDecision, string> = {
-    [WorkflowDecision.SUBMIT]: 'Yuborish', [WorkflowDecision.APPROVE]: 'Tasdiqlash',
-    [WorkflowDecision.RETURN]: 'Qaytarish', [WorkflowDecision.FINALIZE]: 'Yakunlash',
-    [WorkflowDecision.CANCEL]: 'Bekor qilish', [WorkflowDecision.REOPEN]: 'Qayta to‘ldirishga qaytarish',
-  };
-  const decisionIcon: Record<WorkflowDecision, React.ComponentType<{ className?: string }>> = {
-    [WorkflowDecision.SUBMIT]: Send, [WorkflowDecision.APPROVE]: CheckCircle2,
-    [WorkflowDecision.RETURN]: RotateCcw, [WorkflowDecision.FINALIZE]: Flag,
-    [WorkflowDecision.CANCEL]: X, [WorkflowDecision.REOPEN]: RotateCcw,
-  };
-  // "Yuborish" reads as its destination — the operator sees "Moderatorga yuborish", so it's clear
-  // where the case goes next (operator → moderator → director → admin).
-  const sendTarget: Partial<Record<CaseStatus, Role>> = {
-    [CaseStatus.MODERATION]: Role.MODERATOR,
-    [CaseStatus.DIRECTOR_REVIEW]: Role.DIRECTOR,
-    [CaseStatus.ADMIN_FINALIZE]: Role.ADMIN,
-  };
-  const transitionLabel = (t: { to: CaseStatus; decision: WorkflowDecision }) => {
-    const target = sendTarget[t.to];
-    return target && t.decision === WorkflowDecision.SUBMIT ? `${ROLE_LABEL[target]}ga yuborish` : decisionLabel[t.decision];
-  };
   // Cancel + reopen are routed through one "Bekor qilish" choice dialog, not direct buttons.
   const inlineTransitions = myTransitions.filter(
     (t) => t.decision !== WorkflowDecision.CANCEL && t.decision !== WorkflowDecision.REOPEN,

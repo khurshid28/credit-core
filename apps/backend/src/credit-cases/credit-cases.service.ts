@@ -226,7 +226,7 @@ export class CreditCasesService {
     if (c.branchId) or.push({ role: Role.MODERATOR, moderatedBranches: { some: { id: c.branchId } } });
     const users = await this.prisma.user.findMany({
       where: { isActive: true, OR: or },
-      select: { id: true, fullName: true, role: true, avatarPath: true, isActive: true },
+      select: { id: true, fullName: true, role: true },
     });
     const rank: Record<string, number> = { OPERATOR: 0, MODERATOR: 1, DIRECTOR: 2, ADMIN: 3 };
     return users.sort((a, b) => (rank[a.role] ?? 9) - (rank[b.role] ?? 9) || a.fullName.localeCompare(b.fullName));

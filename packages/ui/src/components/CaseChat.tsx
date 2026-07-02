@@ -8,16 +8,10 @@ import { ConfirmDialog } from './Modal';
 import { Select } from './forms';
 import { useToast } from './Toast';
 import { cn } from '../lib/cn';
+import { roleTone, initials } from '../lib/roles';
 
 const ROLES: Role[] = [Role.OPERATOR, Role.MODERATOR, Role.DIRECTOR, Role.ADMIN];
 
-const roleTone: Record<Role, string> = {
-  [Role.OPERATOR]: 'bg-brand-600',
-  [Role.MODERATOR]: 'bg-warning-600',
-  [Role.DIRECTOR]: 'bg-violet-600',
-  [Role.ADMIN]: 'bg-gray-800 dark:bg-gray-600',
-};
-const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 const timeFmt = (d: string) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
@@ -61,6 +55,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const { data: participants } = useQuery({
     queryKey: ['case-participants', caseId],
     queryFn: () => api.caseParticipants(caseId),
+    staleTime: 300_000,
   });
 
   const { data: directory } = useQuery({
@@ -119,7 +114,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
           <p className="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">Ishtirokchilar · {participants.length}</p>
           <div className="flex flex-wrap gap-1.5">
             {participants.map((p) => (
-              <span key={p.id} title={ROLE_LABEL[p.role]} className={cn('inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white py-0.5 pl-0.5 pr-2.5 text-xs dark:border-gray-700 dark:bg-gray-800', !p.isActive && 'opacity-50')}>
+              <span key={p.id} title={ROLE_LABEL[p.role]} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white py-0.5 pl-0.5 pr-2.5 text-xs dark:border-gray-700 dark:bg-gray-800">
                 <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white', roleTone[p.role])}>{initials(p.fullName)}</span>
                 <span className="font-medium text-gray-700 dark:text-gray-200">{p.fullName}</span>
                 <span className="text-gray-400">· {ROLE_LABEL[p.role]}</span>

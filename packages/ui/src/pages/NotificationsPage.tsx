@@ -3,18 +3,11 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, FileText, ChevronDown, ArrowRight } from '../lib/icons';
 import { api } from '@credit-core/api-client';
-import { Role, ROLE_LABEL } from '@credit-core/shared';
+import { ROLE_LABEL } from '@credit-core/shared';
 import { Card, Skeleton } from '../components/primitives';
 import { cn } from '../lib/cn';
 import { surface } from '../lib/surfaces';
-
-const roleTone: Record<Role, string> = {
-  [Role.OPERATOR]: 'bg-brand-600',
-  [Role.MODERATOR]: 'bg-warning-600',
-  [Role.DIRECTOR]: 'bg-violet-600',
-  [Role.ADMIN]: 'bg-gray-800 dark:bg-gray-600',
-};
-const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+import { roleTone, initials } from '../lib/roles';
 
 export function NotificationsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['notifications'], queryFn: () => api.notifications(), refetchInterval: 15_000 });

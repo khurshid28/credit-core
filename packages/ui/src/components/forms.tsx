@@ -258,6 +258,19 @@ export function MultiSelect<T extends string>({
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 const WD = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
 
+/** Mask free typing into dd.mm.yyyy as the user types (digits only, auto-inserts the dots). */
+function maskDate(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 8);
+  return [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean).join('.');
+}
+/** Parse a complete "dd.mm.yyyy" — returns a local Date only if it is a real calendar date. */
+function parseDmy(t: string): Date | null {
+  const mm = t.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!mm) return null;
+  const d = new Date(Number(mm[3]), Number(mm[2]) - 1, Number(mm[1]));
+  return d.getDate() === Number(mm[1]) && d.getMonth() === Number(mm[2]) - 1 && d.getFullYear() === Number(mm[3]) ? d : null;
+}
+
 /** Custom date picker — type dd.mm.yyyy directly or pick from the calendar popover. */
 export function DatePicker({ value, onChange, placeholder = 'kk.oo.yyyy' }: { value: string | null; onChange: (iso: string | null) => void; placeholder?: string }) {
   const [open, setOpen] = useState(false);
@@ -274,29 +287,32 @@ export function DatePicker({ value, onChange, placeholder = 'kk.oo.yyyy' }: { va
   const days = new Date(y, m + 1, 0).getDate();
   const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
 
-  // Parse a typed "dd.mm.yyyy" (also / or -) on blur/Enter; revert if it isn't a real date.
+  // A fully typed but impossible date (e.g. 32.13.2026) shows an inline error instead of reverting.
+  const invalid = text.length === 10 && !parseDmy(text);
   const commit = () => {
     const t = text.trim();
     if (t === '') { onChange(null); return; }
-    const mm = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-    const d = mm ? new Date(Number(mm[3]), Number(mm[2]) - 1, Number(mm[1])) : null;
-    if (d && mm && d.getDate() === Number(mm[1]) && d.getMonth() === Number(mm[2]) - 1 && d.getFullYear() === Number(mm[3])) {
-      onChange(new Date(Date.UTC(Number(mm[3]), Number(mm[2]) - 1, Number(mm[1]))).toISOString());
+    const d = parseDmy(t);
+    if (d) {
+      onChange(new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString());
       setView(new Date(d.getFullYear(), d.getMonth(), 1));
-    } else {
-      setText(value ? fmt(new Date(value)) : ''); // revert to the last valid value
+    } else if (t.length < 10) {
+      setText(value ? fmt(new Date(value)) : ''); // incomplete entry — revert to the last valid value
     }
+    // complete-but-invalid: keep the text so the inline error stays visible
   };
 
   return (
-    <>
-      <div ref={anchorRef} className={cn(fieldBase, 'gap-2')}>
+    <div>
+      <div ref={anchorRef} className={cn(fieldBase, 'gap-2', invalid && 'border-error-400 focus-within:border-error-400 focus-within:ring-error-500/10 dark:border-error-500/50')}>
         <input
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => setText(maskDate(e.target.value))}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
           inputMode="numeric"
+          maxLength={10}
+          aria-invalid={invalid}
           placeholder={placeholder}
           className="nums w-full bg-transparent outline-none placeholder:text-slate-400"
         />
@@ -304,6 +320,7 @@ export function DatePicker({ value, onChange, placeholder = 'kk.oo.yyyy' }: { va
           <Calendar className="h-4 w-4" />
         </button>
       </div>
+      {invalid && <p className="mt-1 text-xs text-error-600 dark:text-error-500">Noto‘g‘ri sana — kk.oo.yyyy</p>}
       <Popover anchorRef={anchorRef} open={open} onClose={() => setOpen(false)} width={288}>
         <div className="p-2">
           <div className="mb-2 flex items-center justify-between">
@@ -329,6 +346,6 @@ export function DatePicker({ value, onChange, placeholder = 'kk.oo.yyyy' }: { va
           {value && <button type="button" className="mt-2 w-full text-xs text-muted hover:text-danger-600" onClick={() => { onChange(null); setOpen(false); }}>Tozalash</button>}
         </div>
       </Popover>
-    </>
+    </div>
   );
 }
