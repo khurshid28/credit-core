@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowRight, Banknote, CheckCircle2, Clock, Download, FileDown, FileText, Pencil, Pause, Play, RotateCcw, Send, Flag, Upload, Eye, House, Car, Paperclip, Trash2, X, Plus, Minus, Messages,
+  ArrowRight, Banknote, CheckCircle2, ChevronDown, Clock, Download, FileDown, FileText, Pencil, Pause, Play, RotateCcw, Send, Flag, Upload, Eye, House, Car, Paperclip, Trash2, X, Plus, Minus, Messages,
 } from '../lib/icons';
 import { api, downloadBlob, viewDocument, documentInlineUrl } from '@credit-core/api-client';
 import {
@@ -21,6 +21,28 @@ import { cn, formatMoney } from '../lib/cn';
 const uploadTypes: DocumentType[] = [
   DocumentType.PASSPORT, DocumentType.NOTARY, DocumentType.SCAN, DocumentType.COLLATERAL_PHOTO, DocumentType.TECH_PASSPORT,
 ];
+
+/** A card whose body collapses behind its header — keeps empty/rarely-used sections compact. */
+function CollapsibleCard({ title, count, defaultOpen = false, children }: { title: string; count?: number; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card>
+      <details open={open}>
+        <summary
+          onClick={(e) => { e.preventDefault(); setOpen((o) => !o); }}
+          className="flex cursor-pointer list-none items-center justify-between gap-2 outline-none focus-visible:ring-2 focus-visible:ring-brand-600/30 [&::-webkit-details-marker]:hidden"
+        >
+          <h2 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white">
+            {title}
+            {count != null && count > 0 && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400">{count}</span>}
+          </h2>
+          <ChevronDown className={cn('h-4 w-4 shrink-0 text-gray-400 transition', open && 'rotate-180')} />
+        </summary>
+        <div className="mt-3">{children}</div>
+      </details>
+    </Card>
+  );
+}
 
 export function CaseView() {
   const { id } = useParams();
@@ -180,8 +202,7 @@ export function CaseView() {
 
           <GeneratedDocsPanel caseId={c.id} number={c.number} status={c.status} />
 
-          <Card>
-            <h2 className="mb-1 font-semibold text-gray-800 dark:text-white">Umumiy hujjatlar</h2>
+          <CollapsibleCard title="Umumiy hujjatlar" count={c.documents.filter((d) => !d.collateralId).length} defaultOpen={c.documents.some((d) => !d.collateralId)}>
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Garovga bog‘lanmagan hujjatlar (garov hujjatlari yuqorida har bir garov ostida).</p>
             {(() => {
               const general = c.documents.filter((d) => !d.collateralId);
@@ -229,12 +250,11 @@ export function CaseView() {
                 {isDirectorReview && <span className="text-xs text-warning-600 dark:text-warning-500">Tasdiqlash uchun yakuniy hujjat shart</span>}
               </div>
             )}
-          </Card>
+          </CollapsibleCard>
 
-          <Card>
-            <h2 className="mb-3 font-semibold text-gray-800 dark:text-white">Harakatlar tarixi</h2>
+          <CollapsibleCard title="Harakatlar tarixi" count={c.events.length} defaultOpen={c.events.length > 0}>
             <CaseTimeline events={c.events} />
-          </Card>
+          </CollapsibleCard>
         </div>
 
         <div className="space-y-6">
@@ -796,8 +816,7 @@ function GeneratedDocsPanel({ caseId, number, status }: { caseId: string; number
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
   return (
-    <Card>
-      <h2 className="mb-1 font-semibold text-gray-800 dark:text-white">Hujjatlar</h2>
+    <CollapsibleCard title="Hujjatlar" count={docs?.length ?? 0} defaultOpen={!!docs?.length}>
       <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Tizim tomonidan generatsiya qilingan hujjatlar.</p>
       {status === CaseStatus.DRAFT ? (
         <p className="text-sm text-gray-400 dark:text-gray-500">Ariza yuborilgach hujjatlar shakllanadi.</p>
@@ -821,6 +840,6 @@ function GeneratedDocsPanel({ caseId, number, status }: { caseId: string; number
           ))}
         </ul>
       )}
-    </Card>
+    </CollapsibleCard>
   );
 }

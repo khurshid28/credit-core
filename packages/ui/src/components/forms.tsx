@@ -258,26 +258,53 @@ export function MultiSelect<T extends string>({
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 const WD = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
 
-/** Custom date picker with a calendar popover (portal-based, replaces native date input). */
+/** Custom date picker — type dd.mm.yyyy directly or pick from the calendar popover. */
 export function DatePicker({ value, onChange, placeholder = 'kk.oo.yyyy' }: { value: string | null; onChange: (iso: string | null) => void; placeholder?: string }) {
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const sel = value ? new Date(value) : null;
   const [view, setView] = useState(() => (sel ? new Date(sel.getFullYear(), sel.getMonth(), 1) : new Date(2026, 5, 1)));
+  const fmt = (d: Date) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+  const [text, setText] = useState(sel ? fmt(sel) : '');
+  // Reflect external value changes (calendar pick, form reset) into the typed field.
+  useEffect(() => { setText(value ? fmt(new Date(value)) : ''); }, [value]);
 
   const y = view.getFullYear(), m = view.getMonth();
   const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-first
   const days = new Date(y, m + 1, 0).getDate();
   const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
-  const fmt = (d: Date) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+
+  // Parse a typed "dd.mm.yyyy" (also / or -) on blur/Enter; revert if it isn't a real date.
+  const commit = () => {
+    const t = text.trim();
+    if (t === '') { onChange(null); return; }
+    const mm = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    const d = mm ? new Date(Number(mm[3]), Number(mm[2]) - 1, Number(mm[1])) : null;
+    if (d && mm && d.getDate() === Number(mm[1]) && d.getMonth() === Number(mm[2]) - 1 && d.getFullYear() === Number(mm[3])) {
+      onChange(d.toISOString());
+      setView(new Date(d.getFullYear(), d.getMonth(), 1));
+    } else {
+      setText(value ? fmt(new Date(value)) : ''); // revert to the last valid value
+    }
+  };
 
   return (
     <>
-      <button ref={btnRef} type="button" onClick={() => setOpen((o) => !o)} className={cn(fieldBase, 'justify-between text-left')}>
-        <span className={cn('nums', !sel && 'text-slate-400')}>{sel ? fmt(sel) : placeholder}</span>
-        <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
-      </button>
-      <Popover anchorRef={btnRef} open={open} onClose={() => setOpen(false)} width={288}>
+      <div ref={anchorRef} className={cn(fieldBase, 'gap-2')}>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
+          inputMode="numeric"
+          placeholder={placeholder}
+          className="nums w-full bg-transparent outline-none placeholder:text-slate-400"
+        />
+        <button type="button" aria-label="Kalendar" onClick={() => setOpen((o) => !o)} className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-brand-600 dark:hover:bg-white/10">
+          <Calendar className="h-4 w-4" />
+        </button>
+      </div>
+      <Popover anchorRef={anchorRef} open={open} onClose={() => setOpen(false)} width={288}>
         <div className="p-2">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-white/10" onClick={() => setView(new Date(y, m - 1, 1))}><ArrowRight className="h-4 w-4 rotate-180" /></button>

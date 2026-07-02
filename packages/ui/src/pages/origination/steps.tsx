@@ -38,7 +38,7 @@ export function Step1({ f }: { f: OriginationForm }) {
         <Field label="Pasport seriya"><Input maxLength={2} value={b.passportSeries ?? ''} onChange={(e) => set({ passportSeries: e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) })} placeholder="AA" /></Field>
         <Field label="Pasport raqami"><Input inputMode="numeric" maxLength={7} value={b.passportNumber ?? ''} onChange={(e) => set({ passportNumber: e.target.value.replace(/\D/g, '').slice(0, 7) })} /></Field>
         <Field label="Jinsi"><Select value={(b.gender ?? '') as 'MALE' | 'FEMALE' | ''} onChange={(v) => set({ gender: v })} options={[{ value: 'MALE', label: 'Erkak' }, { value: 'FEMALE', label: 'Ayol' }]} /></Field>
-        <Field label="Fuqarolik"><Input value={b.citizenship ?? ''} onChange={(e) => set({ citizenship: e.target.value })} placeholder="Ўзбекистон Республикаси" /></Field>
+        <Field label="Fuqarolik"><Select value={(b.citizenship ?? '') as string} onChange={(v) => set({ citizenship: v })} options={opt(['O‘zbekiston Respublikasi', 'Rossiya Federatsiyasi', 'Qozog‘iston', 'Tojikiston', 'Qirg‘iziston', 'Turkmaniston', 'Boshqa'])} /></Field>
         <Field label="Tug‘ilgan joy"><Input value={b.placeOfBirth ?? ''} onChange={(e) => set({ placeOfBirth: e.target.value })} /></Field>
         <Field label="Tug‘ilgan sana"><DatePicker value={b.birthDate ?? null} onChange={(iso) => set({ birthDate: iso })} /></Field>
         <Field label="Avvalgi F.I.O"><Input value={b.previousName ?? ''} onChange={(e) => set({ previousName: e.target.value })} placeholder="yo‘q" /></Field>
