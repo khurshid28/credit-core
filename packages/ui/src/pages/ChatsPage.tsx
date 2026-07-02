@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Messages, Plus, Send, Paperclip, X, Download } from '../lib/icons';
 import { api, documentInlineUrl, downloadBlob, type Conversation } from '@credit-core/api-client';
@@ -10,12 +11,21 @@ import { cn } from '../lib/cn';
 type Selected = { kind: 'saved' | 'dm' | 'case'; key: string; title: string };
 
 export function ChatsPage() {
+  const [searchParams] = useSearchParams();
   const { data: convos, isLoading } = useQuery({ queryKey: ['conversations'], queryFn: () => api.conversations(), refetchInterval: 10_000 });
-  const [active, setActive] = useState<Selected | null>(null);
+  // Deep-link: /chats?case=<id> (from a case page) opens that case's chat directly.
+  const [active, setActive] = useState<Selected | null>(() => {
+    const caseId = searchParams.get('case');
+    return caseId ? { kind: 'case', key: caseId, title: 'Ariza chati' } : null;
+  });
   const [newOpen, setNewOpen] = useState(false);
 
   const first = convos?.[0];
-  const selected: Selected | null = active ?? (first ? { kind: first.kind, key: first.key, title: first.title } : null);
+  // Prefer the conversation's real title once the list loads (deep-link starts with a placeholder).
+  const activeConvo = active && convos?.find((c) => c.kind === active.kind && c.key === active.key);
+  const selected: Selected | null = active
+    ? { ...active, title: activeConvo?.title ?? active.title }
+    : (first ? { kind: first.kind, key: first.key, title: first.title } : null);
 
   return (
     <div className="space-y-6">

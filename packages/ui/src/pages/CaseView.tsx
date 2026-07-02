@@ -2,10 +2,9 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowRight, Banknote, CheckCircle2, Clock, Download, FileDown, FileText, Pencil, Pause, Play, RotateCcw, Send, Flag, Upload, Eye, House, Car, Paperclip, Trash2, X, Plus, Minus,
+  ArrowRight, Banknote, CheckCircle2, Clock, Download, FileDown, FileText, Pencil, Pause, Play, RotateCcw, Send, Flag, Upload, Eye, House, Car, Paperclip, Trash2, X, Plus, Minus, Messages,
 } from '../lib/icons';
 import { api, downloadBlob, viewDocument, documentInlineUrl } from '@credit-core/api-client';
-import { CaseChat } from '../components/CaseChat';
 import {
   CaseStatus, computeLoan, DocumentType, DOCUMENT_LABEL, originationCalc, PRODUCT_LABEL, Role,
   TRANSITIONS, WorkflowDecision, type CreditCaseDto, type DocumentDto,
@@ -314,9 +313,15 @@ export function CaseView() {
         </div>
       </div>
 
-      <Card>
-        <h2 className="mb-3 font-semibold text-gray-800 dark:text-white">Muloqot (chat)</h2>
-        <CaseChat caseId={c.id} />
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-700 text-white"><Messages className="h-5 w-5" /></span>
+          <div>
+            <h2 className="font-semibold text-gray-800 dark:text-white">Muloqot (chat)</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Ariza bo‘yicha xabarlar alohida sahifada</p>
+          </div>
+        </div>
+        <Button variant="secondary" onClick={() => navigate(`/chats?case=${c.id}`)}><Messages className="h-4 w-4" /> Chatga o‘tish</Button>
       </Card>
 
       <Modal open={cancelOpen} onClose={() => setCancelOpen(false)} size="sm" title="Arizani bekor qilish" description="Qanday davom etamiz?">
