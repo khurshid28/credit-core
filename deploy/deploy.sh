@@ -9,6 +9,17 @@ if [ ! -f deploy/.env ]; then
   exit 1
 fi
 
+# nginx's :443 listener needs a cert to start. On a fresh install none exists yet, so drop a
+# self-signed fallback (init-letsencrypt.sh later swaps in a real Let's Encrypt cert). This
+# lets nginx serve HTTPS from the first boot instead of crash-looping on a missing cert.
+live="/etc/letsencrypt/live/creditcore.uz"
+if [ ! -f deploy/nginx/certs/live/creditcore.uz/fullchain.pem ]; then
+  echo "==> No TLS cert found — generating a self-signed fallback so nginx can start on :443"
+  docker compose --env-file deploy/.env run --rm --no-deps --entrypoint \
+    "sh -c 'mkdir -p $live && openssl req -x509 -nodes -newkey rsa:2048 -days 365 -keyout $live/privkey.pem -out $live/fullchain.pem -subj /CN=creditcore.uz'" \
+    certbot
+fi
+
 echo "==> Building and starting containers"
 docker compose --env-file deploy/.env up -d --build
 # The backend container syncs the DB schema (prisma db push) on start.
